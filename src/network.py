@@ -1,7 +1,6 @@
 import random
 
 import numpy as np
-from six.moves import xrange
 import time
 
 import torch
@@ -42,8 +41,6 @@ class Seq2SeqModel(nn.Module):
     super(Seq2SeqModel, self).__init__()
     self.source_vocab_size = source_vocab_size
     self.target_vocab_size = target_vocab_size
-    self.source_vocab = source_vocab
-    self.target_vocab = target_vocab
     self.max_source_len = max_source_len
     self.max_target_len = max_target_len
     self.max_depth = max_depth
@@ -130,7 +127,7 @@ class Seq2SeqModel(nn.Module):
       states = []
       embedding = start_tokens
       state = init_state
-      for time_step in xrange(1, self.max_target_len):
+      for time_step in range(1, self.max_target_len):
         state = repackage_state(state)
         output, state = self.decoder(embedding, state)
         states.append(state)
@@ -146,7 +143,7 @@ class Seq2SeqModel(nn.Module):
       states = []
       embedding = start_tokens
       state = init_state
-      for time_step in xrange(1, self.max_target_len):
+      for time_step in range(1, self.max_target_len):
         state = repackage_state(state)
         output, state = self.decoder(embedding, state)
         states.append(state)
@@ -170,7 +167,7 @@ class Seq2SeqModel(nn.Module):
 
     encoder_inputs, decoder_inputs = [], []
 
-    for i in xrange(self.batch_size):
+    for i in range(self.batch_size):
       if i + start_idx < len(data):
         encoder_input, decoder_input = data[i + start_idx]
       else:
@@ -192,7 +189,7 @@ class Seq2TreeModel(Seq2SeqModel):
     node['value'] = Variable(torch.LongTensor(node['value']))
     if self.cuda_flag:
       node['value'] = node['value'].cuda()
-    for idx in xrange(len(node['children'])):
+    for idx in range(len(node['children'])):
       node['children'][idx] = self.convert_node_to_tensor(node['children'][idx])
     return node
 
@@ -222,7 +219,7 @@ class Seq2TreeModel(Seq2SeqModel):
       default_start_token = default_start_token.cuda()
     default_start_token = self.decoder_embedding(default_start_token.unsqueeze(0)).squeeze().unsqueeze(0)
 
-    for idx in xrange(len(init_decoder_inputs)):
+    for idx in range(len(init_decoder_inputs)):
       current_target = init_decoder_inputs[idx]
       current_node = self.build_prediction_node([], default_start_token, current_target, current_target['value'], current_target['idx_batch'], current_target['depth'], None)
       prediction_nodes.append(current_node)
@@ -259,20 +256,20 @@ class Seq2TreeModel(Seq2SeqModel):
       predictions_per_batch.append((predictions_logits, decoder_inputs))
 
       predictions = []
-      for time_step in xrange(self.max_target_len - 1):
+      for time_step in range(self.max_target_len - 1):
         predictions.append(predictions_logits[time_step].max(1)[1])
 
-      for idx_node in xrange(len(decoder_inputs_node_idx)):
+      for idx_node in range(len(decoder_inputs_node_idx)):
           num_node = decoder_inputs_node_idx[idx_node]
           current_target = prediction_nodes[num_node]['target_node']
           current_predictions = []
-          for time_step in xrange(self.max_target_len - 1):
+          for time_step in range(self.max_target_len - 1):
             current_predictions.append(predictions[time_step][idx_node])
           current_predictions = torch.cat(current_predictions, 0)
           prediction_nodes[num_node]['prediction'] = current_predictions
           if feed_previous == False:
             child_idx = 0
-            for idx in xrange(self.max_target_len - 1):
+            for idx in range(self.max_target_len - 1):
               if prediction_nodes[num_node]['value'][idx + 1].item() == data_utils.NT_ID:
                 new_target = current_target['children'][child_idx]
                 new_node = self.build_prediction_node([], states[idx][0][self.num_layers - 1:,idx_node,:], new_target, new_target['value'], new_target['idx_batch'], new_target['depth'], num_node)
@@ -282,7 +279,7 @@ class Seq2TreeModel(Seq2SeqModel):
                 child_idx += 1
           else:
             child_idx = 0
-            for idx in xrange(self.max_target_len - 1):
+            for idx in range(self.max_target_len - 1):
               if prediction_nodes[num_node]['prediction'][idx].item() == data_utils.EOS_ID:
                 break
               if prediction_nodes[num_node]['prediction'][idx].item() == data_utils.NT_ID:
@@ -327,7 +324,7 @@ class Seq2TreeModel(Seq2SeqModel):
 
     encoder_inputs, decoder_inputs = [], []
 
-    for i in xrange(self.batch_size):
+    for i in range(self.batch_size):
       if i + start_idx < len(data):
         encoder_input, decoder_input = data[i + start_idx]
       else:
@@ -577,8 +574,6 @@ class Tree2SeqModel(nn.Module):
     super(Tree2SeqModel, self).__init__()
     self.source_vocab_size = source_vocab_size
     self.target_vocab_size = target_vocab_size
-    self.source_vocab = source_vocab
-    self.target_vocab = target_vocab
     self.max_target_len = max_target_len
     self.max_depth = max_depth
     self.embedding_size = embedding_size
@@ -657,7 +652,7 @@ class Tree2SeqModel(nn.Module):
       states = []
       embedding = start_tokens
       state = init_state
-      for time_step in xrange(1, self.max_target_len):
+      for time_step in range(1, self.max_target_len):
         state = repackage_state(state)
         attention_output = attention_output.unsqueeze(1)
         output, state = self.decoder(embedding, state)
@@ -674,7 +669,7 @@ class Tree2SeqModel(nn.Module):
       states = []
       embedding = start_tokens
       state = init_state
-      for time_step in xrange(1, self.max_target_len):
+      for time_step in range(1, self.max_target_len):
         state = repackage_state(state)
         attention_output = attention_output.unsqueeze(1)
         output, state = self.decoder(embedding, state)
@@ -707,11 +702,11 @@ class Tree2SeqModel(nn.Module):
 
     encoder_managers, decoder_inputs = [], []
 
-    for i in xrange(self.batch_size):
+    for i in range(self.batch_size):
       if i + start_idx < len(data):
-        _, _, encoder_manager, decoder_input = data[i + start_idx]
+        encoder_manager, decoder_input = data[i + start_idx]
       else:
-        _, _, encoder_manager, decoder_input = data[i + start_idx - len(data)]
+        encoder_manager, decoder_input = data[i + start_idx - len(data)]
 
       encoder_managers.append(encoder_manager)
       decoder_pad_size = self.max_target_len - len(decoder_input) - 1
@@ -740,8 +735,6 @@ class Tree2TreeModel(nn.Module):
     super(Tree2TreeModel, self).__init__()
     self.source_vocab_size = source_vocab_size
     self.target_vocab_size = target_vocab_size
-    self.source_vocab = source_vocab
-    self.target_vocab = target_vocab
     self.max_depth = max_depth
     self.embedding_size = embedding_size
     self.hidden_size = hidden_size
@@ -859,9 +852,7 @@ class Tree2TreeModel(nn.Module):
     for idx in range(len(decoder_managers)):
       prediction_managers.append(TreeManager())
 
-    for idx in xrange(len(decoder_managers)):
-      current_target_manager_idx = idx
-      current_target_idx = 0
+    for idx in range(len(decoder_managers)):
       current_prediction_idx = prediction_managers[idx].create_binary_tree(data_utils.GO_ID, None, 0)
       prediction_managers[idx].trees[current_prediction_idx].state = encoder_h_state[idx].unsqueeze(0), encoder_c_state[idx].unsqueeze(0)
       prediction_managers[idx].trees[current_prediction_idx].target = 0
@@ -946,7 +937,7 @@ class Tree2TreeModel(nn.Module):
         predictions_l = predictions_logits_l.max(1)[1]
         predictions_r = predictions_logits_r.max(1)[1]
 
-      for i in xrange(len(tree_idxes)):
+      for i in range(len(tree_idxes)):
           current_prediction_manager_idx, current_prediction_idx = tree_idxes[i]
           target_manager_idx = current_prediction_manager_idx
           current_prediction_tree = prediction_managers[current_prediction_manager_idx].get_tree(current_prediction_idx)
@@ -1026,11 +1017,11 @@ class Tree2TreeModel(nn.Module):
 
     encoder_managers, decoder_managers = [], []
 
-    for i in xrange(self.batch_size):
+    for i in range(self.batch_size):
       if i + start_idx < len(data):
-        encoder_input, decoder_input, encoder_manager, decoder_manager = data[i + start_idx]
+        encoder_manager, decoder_manager = data[i + start_idx]
       else:
-        encoder_input, decoder_input, encoder_manager, decoder_manager = data[i + start_idx - len(data)]
+        encoder_manager, decoder_manager = data[i + start_idx - len(data)]
 
       encoder_managers.append(encoder_manager)
       decoder_managers.append(decoder_manager)

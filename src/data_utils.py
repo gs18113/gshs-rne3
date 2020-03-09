@@ -18,20 +18,20 @@ _UNK = b"_UNK"
 _NT = b"_NT"
 _LEFT_BRACKET = b"("
 _RIGHT_BRACKET = b")"
-_START_VOCAB = [_PAD, _GO, _EOS, _UNK, _NT, _LEFT_BRACKET, _RIGHT_BRACKET]
+_START_VOCAB = [_UNK, _GO, _EOS, _PAD, _NT, _LEFT_BRACKET, _RIGHT_BRACKET]
 
-PAD_ID = 0
+UNK_ID = 0
 GO_ID = 1
 EOS_ID = 2
-UNK_ID = 3
+PAD_ID = 3
 NT_ID = 4
 LEFT_BRACKET_ID = 5
 RIGHT_BRACKET_ID = 6
 
-def add_tokens_from_code(code, vocab, format):
+def add_tokens_from_code(code, vocab, format, parent=None):
   if format == 'tree':
     tok = str(code["root"])
-    if not (tok in vocab):
+    if (tok not in vocab) and ('Identifier' not in parent) and ('Literal' not in parent):
       vocab.append(tok)
     for sub_tree in code["children"]:
       vocab = add_tokens_from_code(sub_tree, vocab, format)

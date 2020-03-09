@@ -7,7 +7,6 @@ import logging
 import argparse
 
 import numpy as np
-from six.moves import xrange
 import json
 
 import torch
@@ -21,13 +20,11 @@ import data_utils
 import network
 import pickle
 
-def create_model(source_vocab_size, target_vocab_size, source_vocab_list, target_vocab_list, dropout_rate, max_source_len, max_target_len):
+def create_model(source_vocab_size, target_vocab_size, dropout_rate, max_source_len, max_target_len):
   if args.network == 'seq2seq':
     model = network.Seq2SeqModel(
       source_vocab_size,
       target_vocab_size,
-      source_vocab_list,
-      target_vocab_list,
       max_source_len,
       max_target_len,
       args.max_depth,
@@ -42,8 +39,6 @@ def create_model(source_vocab_size, target_vocab_size, source_vocab_list, target
     model = network.Seq2TreeModel(
       source_vocab_size,
       target_vocab_size,
-      source_vocab_list,
-      target_vocab_list,
       max_source_len,
       max_target_len,
       args.max_depth,
@@ -58,8 +53,6 @@ def create_model(source_vocab_size, target_vocab_size, source_vocab_list, target
     model = network.Tree2SeqModel(
       source_vocab_size,
       target_vocab_size,
-      source_vocab_list,
-      target_vocab_list,
       max_target_len,
       args.max_depth,
       args.embedding_size,
@@ -73,8 +66,6 @@ def create_model(source_vocab_size, target_vocab_size, source_vocab_list, target
     model = network.Tree2TreeModel(
       source_vocab_size,
       target_vocab_size,
-      source_vocab_list,
-      target_vocab_list,
       args.max_depth,
       args.embedding_size,
       args.hidden_size,
@@ -119,7 +110,7 @@ def step_seq2seq(model, encoder_inputs, decoder_inputs, source_serialize=True, f
     output_predictions = []
 
   total_loss = None
-  for time_step in xrange(model.max_target_len - 1):
+  for time_step in range(model.max_target_len - 1):
     prediction = predictions[time_step]
     if feed_previous:
       output_prediction = prediction.max(1)[1]
@@ -154,13 +145,13 @@ def step_seq2tree(model, encoder_inputs, init_decoder_inputs, feed_previous=Fals
   encoder_inputs = Variable(torch.LongTensor(encoder_inputs))
   if cuda.is_available():
     encoder_inputs = encoder_inputs.cuda()
-  for idx in xrange(len(init_decoder_inputs)):
+  for idx in range(len(init_decoder_inputs)):
     init_decoder_inputs[idx] = model.convert_node_to_tensor(init_decoder_inputs[idx])
   predictions_per_batch, prediction_nodes, raw_predictions = model(encoder_inputs, init_decoder_inputs, feed_previous=feed_previous)
 
   total_loss = None
   for (predictions, decoder_inputs) in predictions_per_batch:
-    for time_step in xrange(model.max_target_len - 1):
+    for time_step in range(model.max_target_len - 1):
       prediction = predictions[time_step]
       target = decoder_inputs[:, time_step + 1]
       loss = model.loss_function(prediction, target)
@@ -227,7 +218,7 @@ def step_tree2tree(model, encoder_inputs, init_decoder_inputs, feed_previous=Fal
   else:
     return total_loss.item()
 
-def evaluate(model, test_set, source_vocab, target_vocab, source_vocab_list, target_vocab_list):
+def evaluate(model, test_set, source_vocab, target_vocab):
     
     test_loss = 0
     acc_tokens = 0
@@ -236,7 +227,7 @@ def evaluate(model, test_set, source_vocab, target_vocab, source_vocab_list, tar
     tot_programs = len(test_set)
     res = []
 
-    for idx in xrange(0, len(test_set), args.batch_size):
+    for idx in range(0, len(test_set), args.batch_size):
       encoder_inputs, decoder_inputs = model.get_batch(test_set, start_idx=idx)
       if args.network == 'seq2seq' or args.network == 'tree2seq':
         if args.network == 'seq2seq':
@@ -249,17 +240,17 @@ def evaluate(model, test_set, source_vocab, target_vocab, source_vocab_list, tar
       else:
         eval_loss, raw_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, feed_previous=True)
       test_loss += len(encoder_inputs) * eval_loss
-      for i in xrange(len(encoder_inputs)):
+      for i in range(len(encoder_inputs)):
         if idx + i >= len(test_set):
           break
         current_output = []
         if args.network == 'seq2seq' or args.network == 'tree2seq':
-          for j in xrange(model.max_target_len - 1):
+          for j in range(model.max_target_len - 1):
             current_output.append(raw_outputs[j][i])
             if raw_outputs[j][i] == data_utils.EOS_ID:
               break
         else:
-          for j in xrange(len(raw_outputs[i])):
+          for j in range(len(raw_outputs[i])):
             current_output.append(raw_outputs[i][j])
         if args.network == 'tree2tree' or args.network == 'tree2seq':
           current_source, current_target, current_source_manager, current_target_manager = test_set[idx + i]
@@ -274,7 +265,7 @@ def evaluate(model, test_set, source_vocab, target_vocab, source_vocab_list, tar
         tot_tokens += len(current_target)
         all_correct = 1
         wrong_tokens = 0
-        for j in xrange(len(current_output)):
+        for j in range(len(current_output)):
           if j >= len(current_target):
             break
           if current_output[j] == current_target[j]:
@@ -291,7 +282,7 @@ def evaluate(model, test_set, source_vocab, target_vocab, source_vocab_list, tar
     
     print(acc_tokens, tot_tokens, acc_programs, tot_programs)
 
-def train(train_data, val_data, source_vocab, target_vocab, source_vocab_list, target_vocab_list, source_serialize, target_serialize):
+def train(train_data, val_data, source_vocab, target_vocab, source_serialize, target_serialize):
 
   print ("Reading training and val data :")
   train_set = data_utils.prepare_data(train_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize)
@@ -301,7 +292,7 @@ def train(train_data, val_data, source_vocab, target_vocab, source_vocab_list, t
     os.makedirs(args.train_dir)
 
   print("Creating %d layers of %d units." % (args.num_layers, args.hidden_size))
-  model = create_model(len(source_vocab), len(target_vocab), source_vocab_list, target_vocab_list, args.dropout_rate, args.max_source_len, args.max_target_len)
+  model = create_model(len(source_vocab), len(target_vocab), args.dropout_rate, args.max_source_len, args.max_target_len)
 
   step_time, loss = 0.0, 0.0
   current_step = 0
@@ -350,10 +341,21 @@ def train(train_data, val_data, source_vocab, target_vocab, source_vocab_list, t
         print("  eval: loss %.2f" % eval_loss)
         sys.stdout.flush()
 
-def test(test_data, source_vocab, target_vocab, source_vocab_list, target_vocab_list, source_serialize, target_serialize):
-  model = create_model(len(source_vocab), len(target_vocab), source_vocab_list, target_vocab_list, 0.0, args.max_source_len, args.max_target_len)
+def test(test_data, source_vocab, target_vocab, source_serialize, target_serialize):
+  model = create_model(len(source_vocab), len(target_vocab), 0.0, args.max_source_len, args.max_target_len)
   test_set = data_utils.prepare_data(test_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize)  
-  evaluate(model, test_set, source_vocab, target_vocab, source_vocab_list, target_vocab_list)
+  evaluate(model, test_set, source_vocab, target_vocab)
+
+
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--network', type=str, default='tree2tree', choices=['seq2seq', 'seq2tree', 'tree2seq', 'tree2tree'])
@@ -407,6 +409,9 @@ parser.add_argument('--input_format', type=str, default='tree', choices=['seq', 
 parser.add_argument('--output_format', type=str, default='tree', choices=['seq', 'tree'])
 parser.add_argument('--no_attention', action='store_true', help='set to true to disable attention')
 parser.add_argument('--no_pf', action='store_true', help='set to true to disable parent attention feeding')
+
+parser.add_argument('--pointer_gen', type=str2bool, default=False, help='set to true enable pointer generation')
+
 args = parser.parse_args()
 
 def main():
@@ -421,12 +426,12 @@ def main():
   if args.no_attention:
     args.no_pf = True
   train_data = json.load(open(args.train_data, 'r'))
-  source_vocab, target_vocab, source_vocab_list, target_vocab_list = data_utils.build_vocab(train_data, args.vocab_filename, args.input_format, args.output_format)
+  source_vocab, target_vocab = data_utils.build_vocab(train_data, args.vocab_filename, args.input_format, args.output_format)
   if args.test:
     test_data = json.load(open(args.test_data, 'r'))
-    test(test_data, source_vocab, target_vocab, source_vocab_list, target_vocab_list, source_serialize, target_serialize)
+    test(test_data, source_vocab, target_vocab, source_serialize, target_serialize)
   else:
     val_data = json.load(open(args.val_data, 'r'))
-    train(train_data, val_data, source_vocab, target_vocab, source_vocab_list, target_vocab_list, source_serialize, target_serialize)
+    train(train_data, val_data, source_vocab, target_vocab, source_serialize, target_serialize)
 
 main()
