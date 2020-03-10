@@ -1,14 +1,10 @@
 import sys
-import gzip
 import os
-import re
-import tarfile
-import operator
 import json
 import pickle
 from Tree import *
+import copy
 
-from six.moves import urllib
 
 # Special vocabulary symbols
 _PAD = b"_PAD"
@@ -20,6 +16,8 @@ _LEFT_BRACKET = b"("
 _RIGHT_BRACKET = b")"
 _START_VOCAB = [_UNK, _GO, _EOS, _PAD, _NT, _LEFT_BRACKET, _RIGHT_BRACKET]
 
+
+# DO NOT change UNK_ID, since the oov id code depends on it..
 UNK_ID = 0
 GO_ID = 1
 EOS_ID = 2
@@ -28,13 +26,26 @@ NT_ID = 4
 LEFT_BRACKET_ID = 5
 RIGHT_BRACKET_ID = 6
 
-def add_tokens_from_code(code, vocab, format, parent=None):
+def add_tokens_from_code(code, vocab, format):
+  if format == 'tree':
+    tok = str(code["root"])
+    if tok not in vocab:
+      vocab.append(tok)
+    for sub_tree in code["children"]:
+      vocab = add_tokens_from_code(sub_tree, vocab, format)
+  else:
+    for tok in code:
+      if not (str(tok) in vocab):
+        vocab.append(str(tok))
+  return vocab
+
+def add_tokens_from_code_pointergen(code, vocab, format, parent=None):
   if format == 'tree':
     tok = str(code["root"])
     if (tok not in vocab) and ('Identifier' not in parent) and ('Literal' not in parent):
       vocab.append(tok)
     for sub_tree in code["children"]:
-      vocab = add_tokens_from_code(sub_tree, vocab, format)
+      vocab = add_tokens_from_code(sub_tree, vocab, format, parent=tok)
   else:
     for tok in code:
       if not (str(tok) in vocab):
@@ -68,8 +79,7 @@ def calStat(data, serialize):
     max_len = max(max_len, current_len)
   return min_len, max_len, avg_len * 1.0 / len(data)
 
-def build_vocab(train_data, vocab_filename, input_format, output_format):
-
+def build_vocab(train_data, vocab_filename, input_format, output_format, pointergen):
   if not vocab_filename:
     source_vocab_list = []
     target_vocab_list = []
@@ -82,11 +92,10 @@ def build_vocab(train_data, vocab_filename, input_format, output_format):
         target_prog = prog['target_prog']
       else:
         target_prog = prog['target_ast']
-      source_vocab_list = add_tokens_from_code(source_prog, source_vocab_list, input_format)
-      target_vocab_list = add_tokens_from_code(target_prog, target_vocab_list, output_format)
-    vocab = {}
-    vocab["source"] = source_vocab_list
-    vocab["target"] = target_vocab_list
+      source_vocab_list = add_tokens_from_code_pointergen(
+          source_prog, source_vocab_list, input_format) if pointergen else add_tokens_from_code(source_prog, source_vocab_list, input_format)
+      target_vocab_list = add_tokens_from_code_pointergen(
+          target_prog, target_vocab_list, output_format) if pointergen else add_tokens_from_code(target_prog, target_vocab_list, output_format)
   else:
     vocab = pickle.load(open(vocab_filename))
     source_vocab_list = vocab["source"]
@@ -100,26 +109,56 @@ def build_vocab(train_data, vocab_filename, input_format, output_format):
     source_vocab_dict[token] = idx
   for idx, token in enumerate(target_vocab_list):
     target_vocab_dict[token] = idx
-  return source_vocab_dict, target_vocab_dict, source_vocab_list, target_vocab_list
+  return source_vocab_dict, target_vocab_dict
 
-def ast_to_token_ids(code, vocab, serialize):
+def ast_to_token_ids(code, vocab, pointer_gen, serialize, vocab_oovs = None):
+  if pointer_gen:
+    assert vocab_oovs != None
+
   if serialize:
     current = []
+
+    current_extended = None
+    if pointer_gen:
+      current_extended = []
+
     current.append(vocab.get(str(code['root']), UNK_ID))
+    if pointer_gen:
+      current_extended.append(vocab_oovs.get(str(code['root']), UNK_ID))
+
     if len(code['children']) > 0:
+
       current.append(LEFT_BRACKET_ID)
+      if pointer_gen:
+        current_extended.append(LEFT_BRACKET_ID)
+
       for sub_tree in code['children']:
-        child = ast_to_token_ids(sub_tree, vocab, serialize)
+        child, child_extended = ast_to_token_ids(sub_tree, vocab, pointer_gen, serialize)
+
         current = current + child
+        if pointer_gen:
+          current_extended = current_extended + child_extended
+
       current.append(RIGHT_BRACKET_ID)
-    return current
+      if pointer_gen:
+        current_extended.append(RIGHT_BRACKET_ID)
+
+    return current, current_extended
   else:
     current = {}
     current['root'] = vocab.get(str(code['root']), UNK_ID)
     current['children'] = []
+    current_extended = None
+    if pointer_gen:
+      current_extended = {}
+      current_extended['root'] = vocab_oovs.get(str(code['root']), UNK_ID)
+      current_extended['children'] = []
     for sub_tree in code['children']:
-      current['children'].append(ast_to_token_ids(sub_tree, vocab, serialize))
-    return current
+      child, child_extended = ast_to_token_ids(sub_tree, vocab, pointer_gen, serialize)
+      current['children'].append(child)
+      if pointer_gen:
+        current_extended['children'].append(child)
+    return current, current_extended
 
 def serialize_tree(tree):
   current = []
@@ -132,10 +171,44 @@ def serialize_tree(tree):
   current.append(RIGHT_BRACKET_ID)
   return current
 
-def raw_program_to_token_ids(prog, vocab):
-  return [vocab[str(t)] for t in prog] + [EOS_ID]
+def raw_program_to_token_ids(prog, vocab, pointer_gen, vocab_oovs = None):
+  if pointer_gen:
+    assert vocab_oovs != None
+  serialized = [vocab.get(str(t), UNK_ID) for t in prog] + [EOS_ID]
+  serialized_extended = [vocab_oovs.get(str(t), UNK_ID) for t in prog] + [EOS_ID]
 
-def prepare_data(init_data, source_vocab, target_vocab, input_format, output_format, source_serialize, target_serialize):
+  return serialized, serialized_extended
+
+def build_vocab_oovs(code, source_vocab, current_target_vocab, format, vocab_oovs = None):
+  if vocab_oovs == None:
+    vocab_oovs = {}
+
+  current_vocab_oovs_id = len(vocab_oovs) + 1 # starts from 1(0 means not OOV)
+  current_target_vocab_id = len(current_target_vocab)
+  if format == 'tree':
+    tok = str(code["root"])
+    if (tok not in source_vocab) and (tok not in vocab_oovs):
+      vocab_oovs[tok] = current_vocab_oovs_id
+      current_target_vocab[tok] = current_target_vocab_id
+    for sub_tree in code["children"]:
+      vocab_oovs, current_target_vocab = build_vocab_oovs(sub_tree, source_vocab, current_target_vocab, format, vocab_oovs)
+  else:
+    for tok in code:
+      if (str(tok) not in source_vocab) and (str(tok) not in vocab_oovs):
+        vocab_oovs[str(tok)] = current_vocab_oovs_id
+        current_vocab_oovs_id += 1
+        current_target_vocab[str(tok)] = current_target_vocab_id
+        current_target_vocab_id += 1
+  return vocab_oovs, current_target_vocab
+
+def get_ext_id2target_ext_id(vocab_oovs, target_vocab):
+  # Converts id starting from 1 to extended target_vocab's id
+  diff = len(target_vocab) - (len(vocab_oovs) + 1) # because it starts from 1
+  def _ext_id2target_ext_id(id):
+    return id+diff
+  return _ext_id2target_ext_id
+
+def prepare_data(init_data, source_vocab, target_vocab, input_format, output_format, source_serialize, target_serialize, pointer_gen):
   data = []
   for prog in init_data:
     if input_format == 'seq':
@@ -146,30 +219,59 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
       target_prog = prog['target_prog']
     else:
       target_prog = prog['target_ast']
+
+    vocab_oovs, target_vocab_extended = build_vocab_oovs(source_prog, copy.deepcopy(
+        source_vocab), copy.deepcopy(target_vocab), input_format) if pointer_gen else None, None
+
+    # UNK token is 0, so the result of *_to_token_ids(source_prog, vocab_oovs) 
+    # includes 0s where the token is not included in the vocab_oovs(i.e. is included in the original vocab).
+
     if input_format == 'seq':
       source_prog = raw_program_to_token_ids(source_prog, source_vocab)
+      target_prog_oov_ids = raw_program_to_token_ids(source_prog, vocab_oovs) if pointer_gen else None
     else:
       source_prog = ast_to_token_ids(source_prog, source_vocab, source_serialize)
+      source_prog_oov_ids = ast_to_token_ids(source_prog, vocab_oovs, source_serialize) if pointer_gen else None
     if output_format == 'seq':
       target_prog = raw_program_to_token_ids(target_prog, target_vocab)
+      target_prog_extended = raw_program_to_token_ids(source_prog, target_vocab_extended) if pointer_gen else None
     else:
       target_prog = ast_to_token_ids(target_prog, target_vocab, target_serialize)
-    data.append((source_prog, target_prog))
+      target_prog_extended = ast_to_token_ids(source_prog, target_vocab_extended, target_serialize) if pointer_gen else None
+    data.append((source_prog, target_prog, source_prog_oov_ids, target_prog_extended, vocab_oovs))
   if input_format == 'tree' and (not source_serialize):
     data = build_trees(data, target_serialize)
   return data
 
 def build_trees(init_dataset, target_serialize=False):
   data_set = []
-  for (source, target) in init_dataset:
+  for (source, target, vocab_oovs, source_oov_ids, target_extended) in init_dataset:
     source_trees = TreeManager()
     source_trees.build_binary_tree_from_dict(source)
+    if source_oov_ids is not None:
+      source_trees_oov_ids = TreeManager()
+      source_trees_oov_ids.build_binary_tree_from_dict(source_oov_ids)
+    else:
+      source_trees_oov_ids = None
+
     if target_serialize:
       target_seq = target[:]
-      data_set.append((source, target, source_trees, target_seq))
+      if target_extended is not None:
+        target_seq_extended = target_extended[:]
+      else:
+        target_trees_extended = None
+
+      data_set.append((source_trees, target_seq, source_trees_oov_ids, target_seq_extended, vocab_oovs))
+
     else:
       target_trees = TreeManager()
       target_trees.build_binary_tree_from_dict(target)
-      data_set.append((source, target, source_trees, target_trees))
+      if target_extended is not None:
+        target_trees_extended = TreeManager()
+        target_trees_extended.build_binary_tree_from_dict(target_extended)
+      else:
+        target_trees_extended = None
+
+      data_set.append((source_trees, target_trees, source_trees_oov_ids, target_trees_extended, vocab_oovs))
+
   return data_set
-    
