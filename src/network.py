@@ -560,6 +560,8 @@ class TreeEncoder(nn.Module):
       init_encoder_output = torch.stack(init_encoder_output, dim=0)
       init_encoder_outputs.append(init_encoder_output)
       if init_encoder_output_oov_ids is not None:
+        print("Debugging #1:")
+        print(init_encoder_output_oov_ids)
         init_encoder_output_oov_ids = torch.stack(init_encoder_output_oov_ids, dim=0)
         init_encoder_outputs_oov_ids.append(init_encoder_output_oov_ids)
 
