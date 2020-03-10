@@ -959,6 +959,9 @@ class Tree2TreeModel(nn.Module):
       if pointer_gen and oov_id_max != 0:
         extra_zeros_l = torch.zeros([len(target_seqs_l), extra_zeros_size])
         extra_zeros_r = torch.zeros([len(target_seqs_r), extra_zeros_size])
+        if self.cuda_flag:
+          extra_zeros_l = extra_zeros_l.cuda()
+          extra_zeros_r = extra_zeros_r.cuda()
       target_seqs_l = torch.cat(target_seqs_l, 0)
       target_seqs_r = torch.cat(target_seqs_r, 0)
       if self.cuda_flag:
