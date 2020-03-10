@@ -780,7 +780,7 @@ class Tree2TreeModel(nn.Module):
     if self.no_pf:
       self.p_gen_linear = nn.Linear(self.hidden_size*3+self.embedding_size, 1, bias=True)
     else:
-      self.p_gen_lienar = nn.Linear(self.hidden_size*4+self.embedding_size, 1, bias=True)
+      self.p_gen_linear = nn.Linear(self.hidden_size*4+self.embedding_size, 1, bias=True)
 
     self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
 
