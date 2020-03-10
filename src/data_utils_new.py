@@ -124,7 +124,7 @@ def ast_to_token_ids(code, vocab, pointer_gen, serialize, vocab_oovs = None):
 
     current.append(vocab.get(str(code['root']), UNK_ID))
     if pointer_gen:
-      current_extended.append(vocab_extended.get(str(code['root']), UNK_ID))
+      current_extended.append(vocab_oovs.get(str(code['root']), UNK_ID))
 
     if len(code['children']) > 0:
 
@@ -175,7 +175,7 @@ def raw_program_to_token_ids(prog, vocab, pointer_gen, vocab_oovs = None):
   if pointer_gen:
     assert vocab_oovs != None
   serialized = [vocab.get(str(t), UNK_ID) for t in prog] + [EOS_ID]
-  serialized_extended = [vocab_extended.get(str(t), UNK_ID) for t in prog] + [EOS_ID]
+  serialized_extended = [vocab_oovs.get(str(t), UNK_ID) for t in prog] + [EOS_ID]
 
   return serialized, serialized_extended
 
@@ -248,16 +248,30 @@ def build_trees(init_dataset, target_serialize=False):
   for (source, target, vocab_oovs, source_oov_ids, target_extended) in init_dataset:
     source_trees = TreeManager()
     source_trees.build_binary_tree_from_dict(source)
-    source_trees_oov_ids = TreeManager()
-    source_trees_oov_ids.build_binary_tree_from_dict(source_oov_ids)
+    if source_oov_ids is not None:
+      source_trees_oov_ids = TreeManager()
+      source_trees_oov_ids.build_binary_tree_from_dict(source_oov_ids)
+    else:
+      source_trees_oov_ids = None
+
     if target_serialize:
       target_seq = target[:]
-      target_seq_extended = target_extended[:]
+      if target_extended is not None:
+        target_seq_extended = target_extended[:]
+      else:
+        target_trees_extended = None
+
       data_set.append((source_trees, target_seq, source_trees_oov_ids, target_seq_extended, vocab_oovs))
+
     else:
       target_trees = TreeManager()
       target_trees.build_binary_tree_from_dict(target)
-      target_trees_extended = TreeManager()
-      target_trees_extended.build_binary_tree_from_dict(target_extended)
+      if target_extended is not None:
+        target_trees_extended = TreeManager()
+        target_trees_extended.build_binary_tree_from_dict(target_extended)
+      else:
+        target_trees_extended = None
+
       data_set.append((source_trees, target_trees, source_trees_oov_ids, target_trees_extended, vocab_oovs))
+
   return data_set

@@ -179,31 +179,34 @@ def step_seq2tree(model, encoder_inputs, init_decoder_inputs, feed_previous=Fals
   else:
     return total_loss.item()
 
-def step_tree2tree(model, encoder_inputs, init_decoder_inputs, feed_previous=False):
+# Target vocab len needed for decoding
+def step_tree2tree(model, encoder_inputs, init_decoder_inputs, encoder_inputs_oov_ids, init_decoder_inputs_extended, feed_previous=False):
   if feed_previous == False:
     model.dropout_rate = args.dropout_rate
   else:
     model.dropout_rate = 0.0
 
-  predictions_per_batch, prediction_managers = model(encoder_inputs, init_decoder_inputs, feed_previous=feed_previous)
+  predictions_per_batch, prediction_managers = model(encoder_inputs, init_decoder_inputs, encoder_inputs_oov_ids, init_decoder_inputs_extended, feed_previous=feed_previous, pointer_gen=args.pointer_gen)
 
   total_loss = None
+  total_predictions = 0
   for (predictions, target) in predictions_per_batch:
-    loss = model.loss_function(predictions, target)
+    loss = model.loss_function(predictions, target, args.epsilon)
+    total_predictions += predictions.shape[0]
     if total_loss is None:
       total_loss = loss
     else:
       total_loss += loss
 
-  total_loss /= len(encoder_inputs)
+  total_loss /= total_predictions
 
-  if feed_previous:
+  if feed_previous:# == evaluating
     output_predictions = []
 
     for prediction_manager in prediction_managers:
       output_predictions.append(model.tree2seq(prediction_manager, 1))
 
-  if feed_previous == False:
+  if feed_previous == False: # == training
     model.optimizer.zero_grad()
     total_loss.backward()
     if args.max_gradient_norm > 0:
@@ -228,20 +231,20 @@ def evaluate(model, test_set, source_vocab, target_vocab):
     res = []
 
     for idx in range(0, len(test_set), args.batch_size):
-      encoder_inputs, decoder_inputs = model.get_batch(test_set, start_idx=idx)
+      encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros = model.get_batch(test_set, start_idx=idx)
       if args.network == 'seq2seq' or args.network == 'tree2seq':
         if args.network == 'seq2seq':
           source_serialize = True
         else:
           source_serialize = False
-        eval_loss, raw_outputs = step_seq2seq(model, encoder_inputs, decoder_inputs, source_serialize=source_serialize, feed_previous=True)
+        eval_loss, raw_outputs = step_seq2seq(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, source_serialize=source_serialize, feed_previous=True)
       elif args.network == 'seq2tree':
-        eval_loss, raw_outputs = step_seq2tree(model, encoder_inputs, decoder_inputs, feed_previous=True)
+        eval_loss, raw_outputs = step_seq2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, feed_previous=True)
       else:
-        eval_loss, raw_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, feed_previous=True)
+        eval_loss, raw_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, feed_previous=True)
       test_loss += len(encoder_inputs) * eval_loss
       for i in range(len(encoder_inputs)):
-        if idx + i >= len(test_set):
+        if idx + i >= len(test_set): # evaluating iterates only once over the whole set
           break
         current_output = []
         if args.network == 'seq2seq' or args.network == 'tree2seq':
@@ -252,10 +255,10 @@ def evaluate(model, test_set, source_vocab, target_vocab):
         else:
           for j in range(len(raw_outputs[i])):
             current_output.append(raw_outputs[i][j])
-        if args.network == 'tree2tree' or args.network == 'tree2seq':
-          current_source, current_target, current_source_manager, current_target_manager = test_set[idx + i]
-        else:
-          current_source, current_target = test_set[idx + i]
+        current_source, current_target, _, current_target_extended, vocab_oovs = test_set[idx + i]
+        if args.pointer_gen:
+          current_target = current_target_extended
+
         if args.network != 'seq2seq' and args.network != 'tree2seq':
           current_target = data_utils.serialize_tree(current_target)
         if args.network == 'tree2tree':
@@ -304,14 +307,14 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
     random.shuffle(train_set)
     for batch_idx in range(0, train_data_size, args.batch_size):
       start_time = time.time()
-      encoder_inputs, decoder_inputs = model.get_batch(train_set, start_idx=batch_idx)
+      encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, _, extra_zeros = model.get_batch(train_set, start_idx=batch_idx)
 
       if args.network == 'seq2seq' or args.network == 'tree2seq':
-        step_loss = step_seq2seq(model, encoder_inputs, decoder_inputs, source_serialize=source_serialize, feed_previous=False)
+        step_loss = step_seq2seq(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, source_serialize=source_serialize, feed_previous=False)
       elif args.network == 'seq2tree':
-        step_loss = step_seq2tree(model, encoder_inputs, decoder_inputs, feed_previous=False)
+        step_loss = step_seq2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, feed_previous=False)
       else:
-        step_loss = step_tree2tree(model, encoder_inputs, decoder_inputs, feed_previous=False)
+        step_loss = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, feed_previous=False)
 
       step_time += (time.time() - start_time) / args.steps_per_checkpoint
       loss += step_loss / args.steps_per_checkpoint
@@ -331,13 +334,13 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
         torch.save(ckpt, ckpt_path)
         step_time, loss = 0.0, 0.0
         
-        encoder_inputs, decoder_inputs = model.get_batch(val_set, start_idx=0)
+        encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, _, extra_zeros = model.get_batch(val_set, start_idx=0)
         if args.network == 'seq2seq' or args.network == 'tree2seq':
-          eval_loss, decoder_outputs = step_seq2seq(model, encoder_inputs, decoder_inputs, source_serialize=source_serialize, feed_previous=True)
+          eval_loss, decoder_outputs = step_seq2seq(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, source_serialize=source_serialize, feed_previous=True)
         elif args.network == 'seq2tree':
-          eval_loss, decoder_outputs = step_seq2tree(model, encoder_inputs, decoder_inputs, feed_previous=True)
+          eval_loss, decoder_outputs = step_seq2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, feed_previous=True)
         else:
-          eval_loss, decoder_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, feed_previous=True)
+          eval_loss, decoder_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, feed_previous=True)
         print("  eval: loss %.2f" % eval_loss)
         sys.stdout.flush()
 
@@ -410,7 +413,10 @@ parser.add_argument('--output_format', type=str, default='tree', choices=['seq',
 parser.add_argument('--no_attention', action='store_true', help='set to true to disable attention')
 parser.add_argument('--no_pf', action='store_true', help='set to true to disable parent attention feeding')
 
-parser.add_argument('--pointer_gen', type=str2bool, default=False, help='set to true enable pointer generation')
+parser.add_argument('--pointer_gen', type=str2bool, default=False,
+                    help='set to true enable pointer generation')
+parser.add_argument('--epsilon', type=float, default=1e-12,
+                    help='epsilon value to avoid NaN at log')
 
 args = parser.parse_args()
 

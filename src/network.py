@@ -25,8 +25,6 @@ class Seq2SeqModel(nn.Module):
   def __init__(self,
                source_vocab_size,
                target_vocab_size,
-               source_vocab,
-               target_vocab,
                max_source_len,
                max_target_len,
                max_depth,
@@ -393,7 +391,7 @@ class TreeEncoder(nn.Module):
     encoder_outputs = self.calc_root(embedding, children_h, children_c)
     return encoder_outputs
 
-  def forward(self, encoder_managers):
+  def forward(self, encoder_managers, encoder_managers_oov_ids):
     queue = []
     head = 0
     max_num_trees = 0
@@ -529,15 +527,20 @@ class TreeEncoder(nn.Module):
     encoder_h_state = []
     encoder_c_state = []
     init_encoder_outputs = []
+    init_encoder_outputs_oov_ids = [] if encoder_managers_oov_ids is not None else None
     init_attention_masks = []
-    for encoder_manager in encoder_managers:
+    for encoder_manager_idx, encoder_manager in enumerate(encoder_managers):
       root = encoder_manager.get_tree(0)
       h, c = root.state
       encoder_h_state.append(h)
       encoder_c_state.append(c)
       init_encoder_output = []
-      for tree in encoder_manager.trees:
+      init_encoder_output_oov_ids = [] if encoder_managers_oov_ids is not None else None
+      for idx, tree in enumerate(encoder_manager.trees):
         init_encoder_output.append(tree.state[0])
+        if init_encoder_output_oov_ids is not None:
+          init_encoder_output_oov_ids.append(encoder_managers_oov_ids[encoder_manager_idx].trees[idx].root)
+
       attention_mask = [0] * len(init_encoder_output)
       current_len = len(init_encoder_output)
       if current_len < max_num_trees:
@@ -549,18 +552,20 @@ class TreeEncoder(nn.Module):
       init_attention_masks.append(attention_mask)
       init_encoder_output = torch.stack(init_encoder_output, dim=0)
       init_encoder_outputs.append(init_encoder_output)
+      if init_encoder_outputs_oov_ids is not None:
+        init_encoder_outputs_oov_ids.append(init_encoder_output_oov_ids)
 
     init_encoder_outputs = torch.stack(init_encoder_outputs, dim=0)
     init_attention_masks = torch.stack(init_attention_masks, dim=0)
+    if init_encoder_outputs_oov_ids is not None:
+      init_encoder_outputs_oov_ids = torch.stack(init_encoder_outputs_oov_ids, dim=0)
 
-    return init_encoder_outputs, init_attention_masks, encoder_h_state, encoder_c_state
+    return init_encoder_outputs, init_encoder_outputs_oov_ids, init_attention_masks, encoder_h_state, encoder_c_state
 
 class Tree2SeqModel(nn.Module):
   def __init__(self,
                source_vocab_size,
                target_vocab_size,
-               source_vocab,
-               target_vocab,
                max_target_len,
                max_depth,
                embedding_size,
@@ -719,8 +724,6 @@ class Tree2TreeModel(nn.Module):
   def __init__(self,
                source_vocab_size,
                target_vocab_size,
-               source_vocab,
-               target_vocab,
                max_depth,
                embedding_size,
                hidden_size,
@@ -766,7 +769,11 @@ class Tree2TreeModel(nn.Module):
 
     self.output_linear_layer = nn.Linear(self.hidden_size, self.target_vocab_size, bias=True)
 
-    self.loss_function = nn.CrossEntropyLoss(size_average=False)
+    if self.no_pf:
+      self.p_gen_linear = nn.Linear(self.hidden_size*3+self.embedding_size, 1, bias=True)
+    else:
+      self.p_gen_lienar = nn.Linear(self.hidden_size*4+self.embedding_size, 1, bias=True)
+
     self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
 
   def init_weights(self, param_init):
@@ -788,13 +795,13 @@ class Tree2TreeModel(nn.Module):
     if len(dotted.size()) == 1:
       dotted = dotted.unsqueeze(0)
     dotted.data.masked_fill_(attention_masks.data, -float('inf'))
-    attention = nn.Softmax()(dotted)
+    attention = F.softmax(dotted)
     encoder_attention = torch.bmm(torch.transpose(encoder_outputs, 1, 2), attention.unsqueeze(2))
     encoder_attention = encoder_attention.squeeze()
     if len(encoder_attention.size()) == 1:
       encoder_attention = encoder_attention.unsqueeze(0)    
     res = self.attention_tanh(self.attention_linear(torch.cat([decoder_output, encoder_attention], 1)))
-    return res
+    return res, attention
 
   def tree2seq(self, prediction_manager, current_idx):
     current_tree = prediction_manager.get_tree(current_idx)
@@ -809,20 +816,33 @@ class Tree2TreeModel(nn.Module):
       prediction = prediction + self.tree2seq(prediction_manager, current_tree.rchild)
     return prediction
 
-  def predict(self, decoder_output, encoder_outputs, attention_masks):
+  def predict(self, decoder_inputs, decoder_states, decoder_outputs, encoder_outputs, encoder_outputs_oov_ids, attention_masks, extra_zeros, pointer_gen):
     if self.no_attention:
-      output = decoder_output
-      attention_output = decoder_output
+      output = decoder_outputs
+      attention_output = decoder_outputs
     else:
-      attention_output = self.attention(encoder_outputs, attention_masks, decoder_output)
+      attention_output, attention_dist = self.attention(encoder_outputs, attention_masks, decoder_outputs)
       if self.dropout_rate > 0:
         output = self.dropout(attention_output)
       else:
         output = attention_output
-    output_linear = self.output_linear_layer(output)
-    return output_linear, attention_output
+    output_vocab = F.softmax(self.output_linear_layer(output))
+    if pointer_gen:
+      print("Debugging line 824, shape:", attention_output.shape, decoder_inputs.shape, decoder_states[0].shape, decoder_states[1].shape)
+      p_gen_features = torch.cat([attention_output, decoder_inputs, decoder_states[0], decoder_states[1]], dim=1)
+      p_gen = F.sigmoid(self.p_gen_linear(p_gen_features))
 
-  def decode(self, encoder_outputs, attention_masks, init_state, init_decoder_inputs, attention_inputs):
+      output_vocab = output_vocab * p_gen
+      attention_dist = attention_dist * (1-p_gen)
+      if extra_zeros is not None:
+        output_attn = extra_zeros.scatter_add(1, encoder_outputs_oov_ids, attention_dist)
+        output_final = torch.cat([output_vocab, output_attn[:, 1:]], dim=1)
+
+    else:
+      output_final = output_vocab
+    return output_final, attention_output
+
+  def decode(self, encoder_outputs, encoder_outputs_oov_ids, attention_masks, init_state, init_decoder_inputs, attention_inputs, extra_zeros, pointer_gen):
       embedding = self.decoder_embedding(init_decoder_inputs)
       state_l = repackage_state(init_state)
       state_r = repackage_state(init_state)
@@ -838,13 +858,13 @@ class Tree2TreeModel(nn.Module):
       output_r = output_r.squeeze()
       if len(output_r.size()) == 1:
         output_r = output_r.unsqueeze(0)
-      prediction_l, attention_output_l = self.predict(output_l, encoder_outputs, attention_masks)
-      prediction_r, attention_output_r = self.predict(output_r, encoder_outputs, attention_masks)
+      prediction_l, attention_output_l = self.predict(decoder_inputs, state_l, output_l, encoder_outputs, encoder_outputs_oov_ids, attention_masks, extra_zeros, pointer_gen)
+      prediction_r, attention_output_r = self.predict(decoder_inputs, state_r, output_r, encoder_outputs, encoder_outputs_oov_ids, attention_masks, extra_zeros, pointer_gen)
       return prediction_l, prediction_r, state_l, state_r, attention_output_l, attention_output_r
 
-  def forward(self, encoder_managers, decoder_managers, feed_previous=False):
+  def forward(self, encoder_managers, decoder_managers, encoder_managers_oov_ids, decoder_managers_extended, extra_zeros, feed_previous=False, pointer_gen=False):
 
-    init_encoder_outputs, init_attention_masks, encoder_h_state, encoder_c_state = self.encoder(encoder_managers)
+    init_encoder_outputs, init_encoder_outputs_oov_ids, init_attention_masks, encoder_h_state, encoder_c_state = self.encoder(encoder_managers, encoder_managers_oov_ids)
 
     queue = []
 
@@ -868,6 +888,7 @@ class Tree2TreeModel(nn.Module):
       decoder_inputs = []
       attention_inputs = []
       encoder_outputs = []
+      encoder_outputs_oov_ids = []
       attention_masks = []
       target_seqs_l = []
       target_seqs_r = []
@@ -877,7 +898,8 @@ class Tree2TreeModel(nn.Module):
         target_manager_idx = queue[head][0]
         target_idx = current_tree.target
         if target_idx is not None:
-          target_tree = decoder_managers[target_manager_idx].get_tree(target_idx)
+          target_tree = decoder_managers_extended[target_manager_idx].get_tree(target_idx) if pointer_gen \
+                else decoder_managers[target_manager_idx].get_tree(target_idx)
         else:
           target_tree = None
         if target_tree is not None:
@@ -891,7 +913,7 @@ class Tree2TreeModel(nn.Module):
           decoder_input = current_tree.root
           decoder_inputs.append(decoder_input)
           if current_tree.attention is None:
-            attention_input = Variable(torch.zeros(self.hidden_size))
+            attention_input = torch.zeros(self.hidden_size)
             if self.cuda_flag:
               attention_input = attention_input.cuda()
           else:
@@ -902,16 +924,20 @@ class Tree2TreeModel(nn.Module):
             target_seq_r = EOS_token
           else:
             if target_tree is not None and target_tree.lchild is not None:
-              target_seq_l = decoder_managers[target_manager_idx].trees[target_tree.lchild].root
+              target_seq_l = decoder_managers_extended[target_manager_idx].trees[target_tree.lchild].roo if pointer_gen \
+                else decoder_managers[target_manager_idx].trees[target_tree.lchild].root
             else:
               target_seq_l = EOS_token
             if target_tree is not None and target_tree.rchild is not None:
-              target_seq_r = decoder_managers[target_manager_idx].trees[target_tree.rchild].root
+              target_seq_r = decoder_managers_extended[target_manager_idx].trees[target_tree.rchild].roo if pointer_gen \
+                else decoder_managers[target_manager_idx].trees[target_tree.rchild].root
             else:
               target_seq_r = EOS_token
           target_seqs_l.append(target_seq_l)
           target_seqs_r.append(target_seq_r)
           encoder_outputs.append(init_encoder_outputs[queue[head][0]])
+          if encoder_outputs_oov_ids is not None:
+            encoder_outputs_oov_ids.append(init_encoder_outputs_oov_ids[queue[head][0]])
           attention_masks.append(init_attention_masks[queue[head][0]])
         head += 1
       if len(tree_idxes) == 0:
@@ -919,6 +945,8 @@ class Tree2TreeModel(nn.Module):
       init_h_states = torch.stack(init_h_states, dim=1)
       init_c_states = torch.stack(init_c_states, dim=1)
       decoder_inputs = torch.stack(decoder_inputs, dim=0)
+      if pointer_gen:
+        decoder_inputs[decoder_inputs >= self.target_vocab_size] = data_utils.UNK_ID
       attention_inputs = torch.stack(attention_inputs, dim=0).unsqueeze(1)
       target_seqs_l = torch.cat(target_seqs_l, 0)
       target_seqs_r = torch.cat(target_seqs_r, 0)
@@ -927,9 +955,15 @@ class Tree2TreeModel(nn.Module):
         target_seqs_l = target_seqs_l.cuda()
         target_seqs_r = target_seqs_r.cuda()
       encoder_outputs = torch.stack(encoder_outputs, dim=0)
+      if encoder_outputs_oov_ids is not None:
+        encoder_outputs_oov_ids = torch.stack(encoder_outputs_oov_ids, dim=0)
       attention_masks = torch.stack(attention_masks, dim=0)
 
-      predictions_logits_l, predictions_logits_r, states_l, states_r, attention_outputs_l, attention_outputs_r = self.decode(encoder_outputs, attention_masks, (init_h_states, init_c_states), decoder_inputs, attention_inputs)
+      predictions_logits_l, predictions_logits_r, states_l, states_r, attention_outputs_l, attention_outputs_r = self.decode(encoder_outputs, encoder_outputs_oov_ids, attention_masks, (init_h_states, init_c_states), decoder_inputs, attention_inputs, pointer_gen)
+
+      assert predictions_logits_l.shape == target_seqs_l.shape
+      assert predictions_logits_r.shape == target_seqs_r.shape
+
       predictions_per_batch.append((predictions_logits_l, target_seqs_l))
       predictions_per_batch.append((predictions_logits_r, target_seqs_r))
 
@@ -1016,14 +1050,29 @@ class Tree2TreeModel(nn.Module):
   def get_batch(self, data, start_idx):
 
     encoder_managers, decoder_managers = [], []
+    encoder_managers_oov_ids, decoder_managers_extended = [], [] if data[0][3] is not None else None, None
+    oov_ids_max = 0
 
     for i in range(self.batch_size):
-      if i + start_idx < len(data):
-        encoder_manager, decoder_manager = data[i + start_idx]
-      else:
-        encoder_manager, decoder_manager = data[i + start_idx - len(data)]
+      encoder_manager, decoder_manager, encoder_manager_oov_ids, decoder_manager_extended, vocab_oovs = \
+        data[i + start_idx] if ( i + start_idx < len(data) ) else data[i + start_idx - len(data)]
 
       encoder_managers.append(encoder_manager)
       decoder_managers.append(decoder_manager)
+      if encoder_managers_oov_ids is not None:
+        encoder_managers_oov_ids.append(encoder_manager_oov_ids)
+        decoder_managers_extended.append(decoder_manager_extended)
+        oov_ids_max = max(oov_ids_max, len(vocab_oovs))
 
-    return encoder_managers, decoder_managers
+    if oov_ids_max == 0:
+      extra_zeros = None
+    else:
+      extra_zeros = torch.zeros([self.batch_size, oov_ids_max+1])
+
+    return encoder_managers, decoder_managers, encoder_managers_oov_ids, decoder_managers_extended, extra_zeros
+
+  def loss_function(self, predictions, target, epsilon):
+    true_predictions = torch.gather(predictions, 1, target.unsqueeze(1)).squeeze()
+    loss = -torch.log(predictions + epsilon)
+    return loss.sum()
+
