@@ -180,13 +180,13 @@ def step_seq2tree(model, encoder_inputs, init_decoder_inputs, feed_previous=Fals
     return total_loss.item()
 
 # Target vocab len needed for decoding
-def step_tree2tree(model, encoder_inputs, init_decoder_inputs, encoder_inputs_oov_ids, init_decoder_inputs_extended, extra_zeros, feed_previous=False):
+def step_tree2tree(model, encoder_inputs, init_decoder_inputs, encoder_inputs_oov_ids, init_decoder_inputs_extended, feed_previous=False):
   if feed_previous == False:
     model.dropout_rate = args.dropout_rate
   else:
     model.dropout_rate = 0.0
 
-  predictions_per_batch, prediction_managers = model(encoder_inputs, init_decoder_inputs, encoder_inputs_oov_ids, init_decoder_inputs_extended, extra_zeros, feed_previous=feed_previous, pointer_gen=args.pointer_gen)
+  predictions_per_batch, prediction_managers = model(encoder_inputs, init_decoder_inputs, encoder_inputs_oov_ids, init_decoder_inputs_extended, feed_previous=feed_previous, pointer_gen=args.pointer_gen)
 
   total_loss = None
   total_predictions = 0
@@ -231,17 +231,17 @@ def evaluate(model, test_set, source_vocab, target_vocab):
     res = []
 
     for idx in range(0, len(test_set), args.batch_size):
-      encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros = model.get_batch(test_set, start_idx=idx)
+      encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size = model.get_batch(test_set, start_idx=idx)
       if args.network == 'seq2seq' or args.network == 'tree2seq':
         if args.network == 'seq2seq':
           source_serialize = True
         else:
           source_serialize = False
-        eval_loss, raw_outputs = step_seq2seq(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, source_serialize=source_serialize, feed_previous=True)
+        eval_loss, raw_outputs = step_seq2seq(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, source_serialize=source_serialize, feed_previous=True)
       elif args.network == 'seq2tree':
-        eval_loss, raw_outputs = step_seq2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, feed_previous=True)
+        eval_loss, raw_outputs = step_seq2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
       else:
-        eval_loss, raw_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, feed_previous=True)
+        eval_loss, raw_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
       test_loss += len(encoder_inputs) * eval_loss
       for i in range(len(encoder_inputs)):
         if idx + i >= len(test_set): # evaluating iterates only once over the whole set
@@ -307,14 +307,14 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
     random.shuffle(train_set)
     for batch_idx in range(0, train_data_size, args.batch_size):
       start_time = time.time()
-      encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros = model.get_batch(train_set, start_idx=batch_idx)
+      encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size = model.get_batch(train_set, start_idx=batch_idx)
 
       if args.network == 'seq2seq' or args.network == 'tree2seq':
-        step_loss = step_seq2seq(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, source_serialize=source_serialize, feed_previous=False)
+        step_loss = step_seq2seq(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, source_serialize=source_serialize, feed_previous=False)
       elif args.network == 'seq2tree':
-        step_loss = step_seq2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, feed_previous=False)
+        step_loss = step_seq2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=False)
       else:
-        step_loss = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, feed_previous=False)
+        step_loss = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=False)
 
       step_time += (time.time() - start_time) / args.steps_per_checkpoint
       loss += step_loss / args.steps_per_checkpoint
@@ -334,13 +334,13 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
         torch.save(ckpt, ckpt_path)
         step_time, loss = 0.0, 0.0
         
-        encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros = model.get_batch(val_set, start_idx=0)
+        encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size = model.get_batch(val_set, start_idx=0)
         if args.network == 'seq2seq' or args.network == 'tree2seq':
-          eval_loss, decoder_outputs = step_seq2seq(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, source_serialize=source_serialize, feed_previous=True)
+          eval_loss, decoder_outputs = step_seq2seq(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, source_serialize=source_serialize, feed_previous=True)
         elif args.network == 'seq2tree':
-          eval_loss, decoder_outputs = step_seq2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, feed_previous=True)
+          eval_loss, decoder_outputs = step_seq2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
         else:
-          eval_loss, decoder_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, feed_previous=True)
+          eval_loss, decoder_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
         print("  eval: loss %.2f" % eval_loss)
         sys.stdout.flush()
 
