@@ -186,7 +186,7 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
       target_prog = prog['target_ast']
 
     vocab_oovs, target_vocab_extended = build_vocab_oovs(source_prog, copy.deepcopy(
-        source_vocab), copy.deepcopy(target_vocab), input_format) if pointer_gen else None, None
+        source_vocab), copy.deepcopy(target_vocab), input_format) if pointer_gen else (None, None)
 
     # UNK token is 0, so the result of *_to_token_ids(source_prog, vocab_oovs) 
     # includes 0s where the token is not included in the vocab_oovs(i.e. is included in the original vocab).
