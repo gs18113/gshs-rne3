@@ -521,7 +521,7 @@ class TreeEncoder(nn.Module):
           visited_idx[encoder_manager_idx] = idx
 
     PAD_state_token = Variable(torch.zeros(self.hidden_size))
-    PAD_ID_tensor = torch.LongTensor(data_utils.PAD_ID)
+    PAD_ID_tensor = torch.LongTensor([data_utils.PAD_ID])
     if self.cuda_flag:
       PAD_state_token = PAD_state_token.cuda()
       PAD_ID_tensor = PAD_ID_tensor.cuda()
@@ -560,8 +560,6 @@ class TreeEncoder(nn.Module):
       init_encoder_output = torch.stack(init_encoder_output, dim=0)
       init_encoder_outputs.append(init_encoder_output)
       if init_encoder_output_oov_ids is not None:
-        print("Debugging #1:")
-        print(init_encoder_output_oov_ids)
         init_encoder_output_oov_ids = torch.stack(init_encoder_output_oov_ids, dim=0)
         init_encoder_outputs_oov_ids.append(init_encoder_output_oov_ids)
 
