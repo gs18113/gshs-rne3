@@ -977,8 +977,8 @@ class Tree2TreeModel(nn.Module):
 
       predictions_logits_l, predictions_logits_r, states_l, states_r, attention_outputs_l, attention_outputs_r = self.decode(encoder_outputs, encoder_outputs_oov_ids, attention_masks, (init_h_states, init_c_states), decoder_inputs, attention_inputs, extra_zeros_l, extra_zeros_r, pointer_gen)
 
-      assert predictions_logits_l.shape[1] == self.target_vocab_size + extra_zeros.shape[1] -1
-      assert predictions_logits_r.shape[1] == self.target_vocab_size + extra_zeros.shape[1] -1
+      assert predictions_logits_l.shape[1] == self.target_vocab_size + extra_zeros_l.shape[1] -1
+      assert predictions_logits_r.shape[1] == self.target_vocab_size + extra_zeros_l.shape[1] -1
 
       predictions_per_batch.append((predictions_logits_l, target_seqs_l))
       predictions_per_batch.append((predictions_logits_r, target_seqs_r))
