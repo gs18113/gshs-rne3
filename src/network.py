@@ -888,7 +888,7 @@ class Tree2TreeModel(nn.Module):
       decoder_inputs = []
       attention_inputs = []
       encoder_outputs = []
-      encoder_outputs_oov_ids = []
+      encoder_outputs_oov_ids = [] if pointer_gen else None
       attention_masks = []
       target_seqs_l = []
       target_seqs_r = []
@@ -936,7 +936,7 @@ class Tree2TreeModel(nn.Module):
           target_seqs_l.append(target_seq_l)
           target_seqs_r.append(target_seq_r)
           encoder_outputs.append(init_encoder_outputs[queue[head][0]])
-          if encoder_outputs_oov_ids is not None:
+          if pointer_gen:
             encoder_outputs_oov_ids.append(init_encoder_outputs_oov_ids[queue[head][0]])
           attention_masks.append(init_attention_masks[queue[head][0]])
         head += 1
