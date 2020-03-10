@@ -931,12 +931,12 @@ class Tree2TreeModel(nn.Module):
             target_seq_r = EOS_token
           else:
             if target_tree is not None and target_tree.lchild is not None:
-              target_seq_l = decoder_managers_extended[target_manager_idx].trees[target_tree.lchild].roo if pointer_gen \
+              target_seq_l = decoder_managers_extended[target_manager_idx].trees[target_tree.lchild].root if pointer_gen \
                 else decoder_managers[target_manager_idx].trees[target_tree.lchild].root
             else:
               target_seq_l = EOS_token
             if target_tree is not None and target_tree.rchild is not None:
-              target_seq_r = decoder_managers_extended[target_manager_idx].trees[target_tree.rchild].roo if pointer_gen \
+              target_seq_r = decoder_managers_extended[target_manager_idx].trees[target_tree.rchild].root if pointer_gen \
                 else decoder_managers[target_manager_idx].trees[target_tree.rchild].root
             else:
               target_seq_r = EOS_token
