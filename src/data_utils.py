@@ -210,7 +210,7 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
 
 def build_trees(init_dataset, target_serialize=False):
   data_set = []
-  for (source, target, vocab_oovs, source_oov_ids, target_extended) in init_dataset:
+  for (source, target, source_oov_ids, target_extended, vocab_oovs) in init_dataset:
     source_trees = TreeManager()
     source_trees.build_binary_tree_from_dict(source)
     if source_oov_ids is not None:
