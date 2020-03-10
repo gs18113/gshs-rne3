@@ -901,7 +901,6 @@ class Tree2TreeModel(nn.Module):
       target_seqs_l = []
       target_seqs_r = []
       tree_idxes = []
-      oov_id_max = 0
       while head < len(queue):
         current_tree = prediction_managers[queue[head][0]].get_tree(queue[head][1])
         target_manager_idx = queue[head][0]
@@ -957,12 +956,14 @@ class Tree2TreeModel(nn.Module):
       if pointer_gen:
         decoder_inputs[decoder_inputs >= self.target_vocab_size] = data_utils.UNK_ID
       attention_inputs = torch.stack(attention_inputs, dim=0).unsqueeze(1)
-      if pointer_gen and oov_id_max != 0:
+      if pointer_gen and extra_zeros_size != 0:
         extra_zeros_l = torch.zeros([len(target_seqs_l), extra_zeros_size])
         extra_zeros_r = torch.zeros([len(target_seqs_r), extra_zeros_size])
         if self.cuda_flag:
           extra_zeros_l = extra_zeros_l.cuda()
           extra_zeros_r = extra_zeros_r.cuda()
+      else:
+        extra_zeros_l = extra_zeros_r = None
       target_seqs_l = torch.cat(target_seqs_l, 0)
       target_seqs_r = torch.cat(target_seqs_r, 0)
       if self.cuda_flag:
@@ -1079,7 +1080,7 @@ class Tree2TreeModel(nn.Module):
         decoder_managers_extended.append(decoder_manager_extended)
         oov_ids_max = max(oov_ids_max, len(vocab_oovs))
 
-    extra_zeros_size = oov_ids_max+1
+    extra_zeros_size = oov_ids_max+1 if oov_ids_max != 0 else 0
 
     return encoder_managers, decoder_managers, encoder_managers_oov_ids, decoder_managers_extended, extra_zeros_size
 
