@@ -969,8 +969,6 @@ class Tree2TreeModel(nn.Module):
         decoder_inputs = decoder_inputs.cuda()
         target_seqs_l = target_seqs_l.cuda()
         target_seqs_r = target_seqs_r.cuda()
-        if extra_zeros is not None:
-          extra_zeros = extra_zeros.cuda()
       encoder_outputs = torch.stack(encoder_outputs, dim=0)
       if encoder_outputs_oov_ids is not None:
         encoder_outputs_oov_ids = torch.stack(encoder_outputs_oov_ids, dim=0)
