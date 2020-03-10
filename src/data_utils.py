@@ -39,7 +39,7 @@ def add_tokens_from_code(code, vocab, format):
         vocab.append(str(tok))
   return vocab
 
-def add_tokens_from_code_pointergen(code, vocab, format, parent=None):
+def add_tokens_from_code_pointergen(code, vocab, format, parent=""):
   if format == 'tree':
     tok = str(code["root"])
     if (tok not in vocab) and ('Identifier' not in parent) and ('Literal' not in parent):
