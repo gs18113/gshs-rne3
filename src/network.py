@@ -553,12 +553,11 @@ class TreeEncoder(nn.Module):
         attention_mask = attention_mask.cuda()
       init_attention_masks.append(attention_mask)
       init_encoder_output = torch.stack(init_encoder_output, dim=0)
+      init_encoder_outputs.append(init_encoder_output)
       if init_encoder_output_oov_ids is not None:
         init_encoder_output_oov_ids = torch.stack(init_encoder_output_oov_ids, dim=0)
         if self.cuda_flag:
           init_encoder_output_oov_ids = init_encoder_output_oov_ids.cuda()
-      init_encoder_outputs.append(init_encoder_output)
-      if init_encoder_outputs_oov_ids is not None:
         init_encoder_outputs_oov_ids.append(init_encoder_output_oov_ids)
 
     init_encoder_outputs = torch.stack(init_encoder_outputs, dim=0)
