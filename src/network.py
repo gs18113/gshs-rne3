@@ -551,6 +551,8 @@ class TreeEncoder(nn.Module):
       attention_mask = Variable(torch.BoolTensor(attention_mask))
       if self.cuda_flag:
         attention_mask = attention_mask.cuda()
+        if init_encoder_output_oov_ids is not None:
+          init_encoder_output_oov_ids = init_encoder_output_oov_ids.cuda()
       init_attention_masks.append(attention_mask)
       init_encoder_output = torch.stack(init_encoder_output, dim=0)
       if init_encoder_output_oov_ids is not None:
@@ -958,12 +960,14 @@ class Tree2TreeModel(nn.Module):
         decoder_inputs = decoder_inputs.cuda()
         target_seqs_l = target_seqs_l.cuda()
         target_seqs_r = target_seqs_r.cuda()
+        if extra_zeros is not None:
+          extra_zeros = extra_zeros.cuda()
       encoder_outputs = torch.stack(encoder_outputs, dim=0)
       if encoder_outputs_oov_ids is not None:
         encoder_outputs_oov_ids = torch.stack(encoder_outputs_oov_ids, dim=0)
       attention_masks = torch.stack(attention_masks, dim=0)
 
-      predictions_logits_l, predictions_logits_r, states_l, states_r, attention_outputs_l, attention_outputs_r = self.decode(encoder_outputs, encoder_outputs_oov_ids, attention_masks, (init_h_states, init_c_states), decoder_inputs, attention_inputs, pointer_gen)
+      predictions_logits_l, predictions_logits_r, states_l, states_r, attention_outputs_l, attention_outputs_r = self.decode(encoder_outputs, encoder_outputs_oov_ids, attention_masks, (init_h_states, init_c_states), decoder_inputs, attention_inputs, extra_zeros, pointer_gen)
 
       assert predictions_logits_l.shape == target_seqs_l.shape
       assert predictions_logits_r.shape == target_seqs_r.shape
