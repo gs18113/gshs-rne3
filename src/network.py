@@ -970,8 +970,12 @@ class Tree2TreeModel(nn.Module):
 
       predictions_logits_l, predictions_logits_r, states_l, states_r, attention_outputs_l, attention_outputs_r = self.decode(encoder_outputs, encoder_outputs_oov_ids, attention_masks, (init_h_states, init_c_states), decoder_inputs, attention_inputs, extra_zeros, pointer_gen)
 
+      print("#####DEBUGGING#####")
+      print(predictions_logits_l.shape, target_seqs_l.shape)
+      print(predictions_logits_r.shape, target_seqs_r.shape)
       assert predictions_logits_l.shape == target_seqs_l.shape
       assert predictions_logits_r.shape == target_seqs_r.shape
+      print("#####DEBUGGING#####")
 
       predictions_per_batch.append((predictions_logits_l, target_seqs_l))
       predictions_per_batch.append((predictions_logits_r, target_seqs_r))
