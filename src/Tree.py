@@ -8,8 +8,6 @@ class BinaryTree(object):
         if type(root) == int:
             self.root = [root]
             self.root = Variable(torch.LongTensor(self.root))
-            if cuda.is_available():
-                self.root = self.root.cuda()
         else:
             self.root = root
         self.lchild = None
