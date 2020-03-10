@@ -174,9 +174,7 @@ def get_ext_id2target_ext_id(vocab_oovs, target_vocab):
     return id+diff
   return _ext_id2target_ext_id
 
-def prepare_data(init_data, source_vocab, target_vocab, input_format, output_format, source_serialize, target_serialize, pointer_gen, n_cpus):
-  data = []
-
+def _gen_prepare_data(source_vocab, target_vocab, input_format, output_format, source_serialize, target_serialize, pointer_gen):
   def _prepare_data(prog):
     if input_format == 'seq':
       source_prog = prog['source_prog']
@@ -206,8 +204,14 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
       target_prog = ast_to_token_ids(target_prog, target_vocab, target_serialize)
       target_prog_extended = ast_to_token_ids(source_prog, target_vocab_extended, target_serialize) if pointer_gen else None
     return (source_prog, target_prog, source_prog_oov_ids, target_prog_extended, vocab_oovs)
+  return _prepare_data
+
+
+def prepare_data(init_data, source_vocab, target_vocab, input_format, output_format, source_serialize, target_serialize, pointer_gen, n_cpus):
+  data = []
 
   pool = Pool(n_cpus)
+  _prepare_data = _gen_prepare_data(source_vocab, target_vocab, input_format, output_format, source_serialize, target_serialize, pointer_gen)
   for res in pool.map(_prepare_data, init_data):
     data.append(res)
     
