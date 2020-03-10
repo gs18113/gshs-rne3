@@ -180,13 +180,13 @@ def step_seq2tree(model, encoder_inputs, init_decoder_inputs, feed_previous=Fals
     return total_loss.item()
 
 # Target vocab len needed for decoding
-def step_tree2tree(model, encoder_inputs, init_decoder_inputs, encoder_inputs_oov_ids, init_decoder_inputs_extended, feed_previous=False):
+def step_tree2tree(model, encoder_inputs, init_decoder_inputs, encoder_inputs_oov_ids, init_decoder_inputs_extended, extra_zeros_size, feed_previous=False):
   if feed_previous == False:
     model.dropout_rate = args.dropout_rate
   else:
     model.dropout_rate = 0.0
 
-  predictions_per_batch, prediction_managers = model(encoder_inputs, init_decoder_inputs, encoder_inputs_oov_ids, init_decoder_inputs_extended, feed_previous=feed_previous, pointer_gen=args.pointer_gen)
+  predictions_per_batch, prediction_managers = model(encoder_inputs, init_decoder_inputs, encoder_inputs_oov_ids, init_decoder_inputs_extended, extra_zeros_size, feed_previous=feed_previous, pointer_gen=args.pointer_gen)
 
   total_loss = None
   total_predictions = 0
