@@ -45,7 +45,7 @@ def add_tokens_from_code_pointergen(code, vocab, format, parent=""):
     if (tok not in vocab) and ('Identifier' not in parent) and ('Literal' not in parent):
       vocab.append(tok)
     for sub_tree in code["children"]:
-      vocab = add_tokens_from_code(sub_tree, vocab, format, parent=tok)
+      vocab = add_tokens_from_code_pointergen(sub_tree, vocab, format, parent=tok)
   else:
     for tok in code:
       if not (str(tok) in vocab):
