@@ -111,54 +111,24 @@ def build_vocab(train_data, vocab_filename, input_format, output_format, pointer
     target_vocab_dict[token] = idx
   return source_vocab_dict, target_vocab_dict
 
-def ast_to_token_ids(code, vocab, pointer_gen, serialize, vocab_oovs = None):
-  if pointer_gen:
-    assert vocab_oovs != None
-
+def ast_to_token_ids(code, vocab, serialize):
   if serialize:
     current = []
-
-    current_extended = None
-    if pointer_gen:
-      current_extended = []
-
     current.append(vocab.get(str(code['root']), UNK_ID))
-    if pointer_gen:
-      current_extended.append(vocab_oovs.get(str(code['root']), UNK_ID))
-
     if len(code['children']) > 0:
-
       current.append(LEFT_BRACKET_ID)
-      if pointer_gen:
-        current_extended.append(LEFT_BRACKET_ID)
-
       for sub_tree in code['children']:
-        child, child_extended = ast_to_token_ids(sub_tree, vocab, pointer_gen, serialize)
-
+        child, child_extended = ast_to_token_ids(sub_tree, vocab, serialize)
         current = current + child
-        if pointer_gen:
-          current_extended = current_extended + child_extended
-
       current.append(RIGHT_BRACKET_ID)
-      if pointer_gen:
-        current_extended.append(RIGHT_BRACKET_ID)
-
-    return current, current_extended
+    return current
   else:
     current = {}
     current['root'] = vocab.get(str(code['root']), UNK_ID)
     current['children'] = []
-    current_extended = None
-    if pointer_gen:
-      current_extended = {}
-      current_extended['root'] = vocab_oovs.get(str(code['root']), UNK_ID)
-      current_extended['children'] = []
     for sub_tree in code['children']:
-      child, child_extended = ast_to_token_ids(sub_tree, vocab, pointer_gen, serialize)
-      current['children'].append(child)
-      if pointer_gen:
-        current_extended['children'].append(child)
-    return current, current_extended
+      current['children'].append(ast_to_token_ids(sub_tree, vocab, serialize))
+    return current
 
 def serialize_tree(tree):
   current = []
@@ -171,13 +141,8 @@ def serialize_tree(tree):
   current.append(RIGHT_BRACKET_ID)
   return current
 
-def raw_program_to_token_ids(prog, vocab, pointer_gen, vocab_oovs = None):
-  if pointer_gen:
-    assert vocab_oovs != None
-  serialized = [vocab.get(str(t), UNK_ID) for t in prog] + [EOS_ID]
-  serialized_extended = [vocab_oovs.get(str(t), UNK_ID) for t in prog] + [EOS_ID]
-
-  return serialized, serialized_extended
+def raw_program_to_token_ids(prog, vocab):
+  return [vocab[str(t)] for t in prog] + [EOS_ID]
 
 def build_vocab_oovs(code, source_vocab, current_target_vocab, format, vocab_oovs = None):
   if vocab_oovs == None:
