@@ -208,7 +208,7 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
     return (source_prog, target_prog, source_prog_oov_ids, target_prog_extended, vocab_oovs)
 
   pool = Pool(n_cpus)
-  for res in Pool.map(_prepare_data, init_data):
+  for res in pool.map(_prepare_data, init_data):
     data.append(res)
     
   if input_format == 'tree' and (not source_serialize):
