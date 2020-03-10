@@ -521,8 +521,10 @@ class TreeEncoder(nn.Module):
           visited_idx[encoder_manager_idx] = idx
 
     PAD_state_token = Variable(torch.zeros(self.hidden_size))
+    PAD_ID_tensor = torch.LongTensor(data_utils.PAD_ID)
     if self.cuda_flag:
       PAD_state_token = PAD_state_token.cuda()
+      PAD_ID_tensor = PAD_ID_tensor.cuda()
 
     encoder_h_state = []
     encoder_c_state = []
@@ -547,7 +549,7 @@ class TreeEncoder(nn.Module):
         init_encoder_output = init_encoder_output + [PAD_state_token] * (max_num_trees - current_len)
         attention_mask = attention_mask + [1] * (max_num_trees - current_len)
         if init_encoder_output_oov_ids is not None:
-          init_encoder_output_oov_ids = init_encoder_output_oov_ids + [PAD_state_token] * (max_num_trees - current_len)
+          init_encoder_output_oov_ids = init_encoder_output_oov_ids + [PAD_ID_tensor] * (max_num_trees - current_len)
       attention_mask = Variable(torch.BoolTensor(attention_mask))
       if self.cuda_flag:
         attention_mask = attention_mask.cuda()
