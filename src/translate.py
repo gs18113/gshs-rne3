@@ -432,7 +432,7 @@ def main():
   if args.no_attention:
     args.no_pf = True
   train_data = json.load(open(args.train_data, 'r'))
-  source_vocab, target_vocab = data_utils.build_vocab(train_data, args.vocab_filename, args.input_format, args.output_format)
+  source_vocab, target_vocab = data_utils.build_vocab(train_data, args.vocab_filename, args.input_format, args.output_format, args.pointer_gen)
   if args.test:
     test_data = json.load(open(args.test_data, 'r'))
     test(test_data, source_vocab, target_vocab, source_serialize, target_serialize)
