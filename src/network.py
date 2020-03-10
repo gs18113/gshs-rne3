@@ -905,9 +905,6 @@ class Tree2TreeModel(nn.Module):
         target_manager_idx = queue[head][0]
         target_idx = current_tree.target
         if target_idx is not None:
-          print("#####DEBUGGING#####")
-          print(len(decoder_managers_extended[target_manager_idx].trees), len(decoder_managers[target_manager_idx].trees))
-          print("#####DEBUGGING#####")
           target_tree = decoder_managers_extended[target_manager_idx].get_tree(target_idx) if pointer_gen \
                 else decoder_managers[target_manager_idx].get_tree(target_idx)
         else:
