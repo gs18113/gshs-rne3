@@ -288,8 +288,8 @@ def evaluate(model, test_set, source_vocab, target_vocab):
 def train(train_data, val_data, source_vocab, target_vocab, source_serialize, target_serialize):
 
   print ("Reading training and val data :")
-  train_set = data_utils.prepare_data(train_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize)
-  val_set = data_utils.prepare_data(val_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize)  
+  train_set = data_utils.prepare_data(train_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize, args.pointer_gen)
+  val_set = data_utils.prepare_data(val_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize, args.pointer_gen)  
   
   if not os.path.isdir(args.train_dir):
     os.makedirs(args.train_dir)
@@ -346,7 +346,7 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
 
 def test(test_data, source_vocab, target_vocab, source_serialize, target_serialize):
   model = create_model(len(source_vocab), len(target_vocab), 0.0, args.max_source_len, args.max_target_len)
-  test_set = data_utils.prepare_data(test_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize)  
+  test_set = data_utils.prepare_data(test_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize, args.pointer_gen)  
   evaluate(model, test_set, source_vocab, target_vocab)
 
 
