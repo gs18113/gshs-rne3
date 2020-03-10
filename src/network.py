@@ -1050,7 +1050,7 @@ class Tree2TreeModel(nn.Module):
   def get_batch(self, data, start_idx):
 
     encoder_managers, decoder_managers = [], []
-    encoder_managers_oov_ids, decoder_managers_extended = [], [] if data[0][3] is not None else None, None
+    encoder_managers_oov_ids, decoder_managers_extended = ([], []) if data[0][3] is not None else (None, None)
     oov_ids_max = 0
 
     for i in range(self.batch_size):
