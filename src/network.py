@@ -836,6 +836,9 @@ class Tree2TreeModel(nn.Module):
         output = attention_output
     output_vocab = F.softmax(self.output_linear_layer(output))
     if pointer_gen:
+      print("Debugging line 839:")
+      print(attention_output.squeeze().shape, decoder_inputs.squeeze().shape, decoder_states[0].squeeze().shape, decoder_states[1].squeeze().shape)
+      print(torch.cat([attention_output.squeeze(), decoder_inputs.squeeze(), decoder_states[0].squeeze(), decoder_states[1].squeeze()], dim=1).shape)
       p_gen_features = torch.cat([attention_output.squeeze(), decoder_inputs.squeeze(), decoder_states[0].squeeze(), decoder_states[1].squeeze()], dim=1).unsqueeze(2)
       p_gen = torch.sigmoid(self.p_gen_linear(p_gen_features))
 
