@@ -307,7 +307,7 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
     random.shuffle(train_set)
     for batch_idx in range(0, train_data_size, args.batch_size):
       start_time = time.time()
-      encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, _, extra_zeros = model.get_batch(train_set, start_idx=batch_idx)
+      encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros = model.get_batch(train_set, start_idx=batch_idx)
 
       if args.network == 'seq2seq' or args.network == 'tree2seq':
         step_loss = step_seq2seq(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, source_serialize=source_serialize, feed_previous=False)
@@ -334,7 +334,7 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
         torch.save(ckpt, ckpt_path)
         step_time, loss = 0.0, 0.0
         
-        encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, _, extra_zeros = model.get_batch(val_set, start_idx=0)
+        encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros = model.get_batch(val_set, start_idx=0)
         if args.network == 'seq2seq' or args.network == 'tree2seq':
           eval_loss, decoder_outputs = step_seq2seq(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros, source_serialize=source_serialize, feed_previous=True)
         elif args.network == 'seq2tree':
