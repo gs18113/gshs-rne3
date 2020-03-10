@@ -288,8 +288,8 @@ def evaluate(model, test_set, source_vocab, target_vocab):
 def train(train_data, val_data, source_vocab, target_vocab, source_serialize, target_serialize):
 
   print ("Reading training and val data :")
-  train_set = data_utils.prepare_data(train_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize, args.pointer_gen)
-  val_set = data_utils.prepare_data(val_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize, args.pointer_gen)  
+  train_set = data_utils.prepare_data(train_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize, args.pointer_gen, args.n_cpus)
+  val_set = data_utils.prepare_data(val_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize, args.pointer_gen, args.n_cpus)  
   
   if not os.path.isdir(args.train_dir):
     os.makedirs(args.train_dir)
@@ -346,7 +346,7 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
 
 def test(test_data, source_vocab, target_vocab, source_serialize, target_serialize):
   model = create_model(len(source_vocab), len(target_vocab), 0.0, args.max_source_len, args.max_target_len)
-  test_set = data_utils.prepare_data(test_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize, args.pointer_gen)  
+  test_set = data_utils.prepare_data(test_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize, args.pointer_gen, args.n_cpus)  
   evaluate(model, test_set, source_vocab, target_vocab)
 
 
@@ -417,6 +417,9 @@ parser.add_argument('--pointer_gen', type=str2bool, default=False,
                     help='set to true enable pointer generation')
 parser.add_argument('--epsilon', type=float, default=1e-12,
                     help='epsilon value to avoid NaN at log')
+
+parser.add_argument('--n_cpus', type=int, default=16,
+                    help='number of CPUs to use for preprocessing')
 
 args = parser.parse_args()
 

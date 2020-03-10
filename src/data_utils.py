@@ -4,6 +4,7 @@ import json
 import pickle
 from Tree import *
 import copy
+from multiprocessing import Pool
 
 
 # Special vocabulary symbols
@@ -173,9 +174,10 @@ def get_ext_id2target_ext_id(vocab_oovs, target_vocab):
     return id+diff
   return _ext_id2target_ext_id
 
-def prepare_data(init_data, source_vocab, target_vocab, input_format, output_format, source_serialize, target_serialize, pointer_gen):
+def prepare_data(init_data, source_vocab, target_vocab, input_format, output_format, source_serialize, target_serialize, pointer_gen, n_cpus):
   data = []
-  for prog in init_data:
+
+  def _prepare_data(prog):
     if input_format == 'seq':
       source_prog = prog['source_prog']
     else:
@@ -203,7 +205,12 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
     else:
       target_prog = ast_to_token_ids(target_prog, target_vocab, target_serialize)
       target_prog_extended = ast_to_token_ids(source_prog, target_vocab_extended, target_serialize) if pointer_gen else None
-    data.append((source_prog, target_prog, source_prog_oov_ids, target_prog_extended, vocab_oovs))
+    return (source_prog, target_prog, source_prog_oov_ids, target_prog_extended, vocab_oovs)
+
+  pool = Pool(n_cpus)
+  for res in Pool.map(_prepare_data, init_data):
+    data.append(res)
+    
   if input_format == 'tree' and (not source_serialize):
     data = build_trees(data, target_serialize)
   return data
