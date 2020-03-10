@@ -367,9 +367,9 @@ class TreeEncoder(nn.Module):
     self.urh = nn.Linear(self.hidden_size, self.hidden_size)
 
   def calc_root(self, inputs, child_h, child_c):
-    i = F.sigmoid(self.ix(inputs) + self.ilh(child_h[:, 0]) + self.irh(child_h[:, 1]))
-    o = F.sigmoid(self.ox(inputs) + self.olh(child_h[:, 0]) + self.orh(child_h[:, 1]))
-    u = F.tanh(self.ux(inputs) + self.ulh(child_h[:, 0]) + self.urh(child_h[:, 1]))
+    i = torch.sigmoid(self.ix(inputs) + self.ilh(child_h[:, 0]) + self.irh(child_h[:, 1]))
+    o = torch.sigmoid(self.ox(inputs) + self.olh(child_h[:, 0]) + self.orh(child_h[:, 1]))
+    u = torch.tanh(self.ux(inputs) + self.ulh(child_h[:, 0]) + self.urh(child_h[:, 1]))
 
     fx = self.fx(inputs)
     fx = torch.stack([fx, fx], dim=1)
@@ -377,10 +377,10 @@ class TreeEncoder(nn.Module):
     fr = self.frh(child_h[:, 1])
     f = torch.stack([fl, fr], dim=1)
     f = f + fx
-    f = F.sigmoid(f)
+    f = torch.sigmoid(f)
     fc = F.torch.mul(f,child_c)
     c = F.torch.mul(i,u) + F.torch.sum(fc,1)
-    h = F.torch.mul(o, F.tanh(c))
+    h = F.torch.mul(o, torch.tanh(c))
     return h, c
 
   def encode(self, encoder_inputs, children_h, children_c):
@@ -551,6 +551,8 @@ class TreeEncoder(nn.Module):
         attention_mask = attention_mask.cuda()
       init_attention_masks.append(attention_mask)
       init_encoder_output = torch.stack(init_encoder_output, dim=0)
+      if init_encoder_output_oov_ids is not None:
+        init_encoder_output_oov_ids = torch.stack(init_encoder_output_oov_ids, dim=0)
       init_encoder_outputs.append(init_encoder_output)
       if init_encoder_outputs_oov_ids is not None:
         init_encoder_outputs_oov_ids.append(init_encoder_output_oov_ids)
@@ -830,7 +832,7 @@ class Tree2TreeModel(nn.Module):
     if pointer_gen:
       print("Debugging line 824, shape:", attention_output.shape, decoder_inputs.shape, decoder_states[0].shape, decoder_states[1].shape)
       p_gen_features = torch.cat([attention_output, decoder_inputs, decoder_states[0], decoder_states[1]], dim=1)
-      p_gen = F.sigmoid(self.p_gen_linear(p_gen_features))
+      p_gen = torch.sigmoid(self.p_gen_linear(p_gen_features))
 
       output_vocab = output_vocab * p_gen
       attention_dist = attention_dist * (1-p_gen)
