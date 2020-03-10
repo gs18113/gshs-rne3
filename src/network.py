@@ -546,6 +546,8 @@ class TreeEncoder(nn.Module):
       if current_len < max_num_trees:
         init_encoder_output = init_encoder_output + [PAD_state_token] * (max_num_trees - current_len)
         attention_mask = attention_mask + [1] * (max_num_trees - current_len)
+        if init_encoder_output_oov_ids is not None:
+          init_encoder_output_oov_ids = init_encoder_output_oov_ids + [PAD_state_token] * (max_num_trees - current_len)
       attention_mask = Variable(torch.BoolTensor(attention_mask))
       if self.cuda_flag:
         attention_mask = attention_mask.cuda()
