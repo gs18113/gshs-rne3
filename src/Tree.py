@@ -103,7 +103,7 @@ def binarytree2str(prediction_manager, current_idx, vocab_rev):
         prediction = prediction + binarytree2str(prediction_manager, current_tree.rchild)
     return prediction
 
-def tree2str(self, current_node):
+def tree2str(current_node):
     """
     used for JSON-based tree with string as their root
     """
