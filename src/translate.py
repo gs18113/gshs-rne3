@@ -22,6 +22,7 @@ import Tree
 import pickle
 
 import logging
+from tqdm import tqdm
 
 
 from torch.utils.tensorboard import SummaryWriter
