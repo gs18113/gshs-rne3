@@ -5,6 +5,7 @@ import pickle
 from Tree import *
 import copy
 from multiprocessing import Pool
+import gc
 
 
 # Special vocabulary symbols
@@ -212,6 +213,7 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
 
 
   pool = Pool(n_cpus)
+  logging.info("Generating input values for _prepare_data function")
   init_data_len = len(init_data)
   source_vocab_dup = [source_vocab] * init_data_len
   target_vocab_dup = [target_vocab] * init_data_len
@@ -220,11 +222,17 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
   source_serialize_dup = [source_serialize] * init_data_len
   target_serialize_dup = [target_serialize] * init_data_len
   pointer_gen_dup = [pointer_gen] * init_data_len
+  logging.info("_prepare_data start")
   for res in pool.map(_prepare_data, zip(init_data, source_vocab_dup, target_vocab_dup, input_format_dup, output_format_dup, source_serialize_dup, target_serialize_dup, pointer_gen_dup)):
     data.append(res)
+  logging.info("_prepare_data finished")
+  
+  gc.colilct()
     
   if input_format == 'tree' and (not source_serialize):
+    logging.info("build_trees start")
     data = build_trees(data, target_serialize)
+    logging.info("build_trees finished")
   return data
 
 def build_trees(init_dataset, target_serialize=False):

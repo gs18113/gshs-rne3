@@ -18,7 +18,15 @@ from torch.nn.utils import clip_grad_norm
 
 import data_utils
 import network
+import Tree
 import pickle
+
+import logging
+
+
+from torch.utils.tensorboard import SummaryWriter
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [INFO] %(message)s')
 
 def create_model(source_vocab_size, target_vocab_size, dropout_rate, max_source_len, max_target_len):
   if args.network == 'seq2seq':
@@ -81,11 +89,11 @@ def create_model(source_vocab_size, target_vocab_size, dropout_rate, max_source_
     model.cuda()
 
   if args.load_model:
-    print("Reading model parameters from %s" % args.load_model)
+    logging.info("Reading model parameters from %s" % args.load_model)
     pretrained_model = torch.load(args.load_model)
     model.load_state_dict(pretrained_model)
   else:
-    print("Created model with fresh parameters.")
+    logging.info("Created model with fresh parameters.")
     model.init_weights(args.param_init)
   return model
 
@@ -228,6 +236,7 @@ def evaluate(model, test_set, source_vocab, target_vocab):
     tot_tokens = 0
     acc_programs = 0
     tot_programs = len(test_set)
+    outputs_num_total = 0
     res = []
 
     for idx in range(0, len(test_set), args.batch_size):
@@ -242,7 +251,9 @@ def evaluate(model, test_set, source_vocab, target_vocab):
         eval_loss, raw_outputs = step_seq2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
       else:
         eval_loss, raw_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
-      test_loss += len(encoder_inputs) * eval_loss
+      outputs_num = sum(len(decoder_input.trees) for decoder_input in len(decoder_inputs))
+      test_loss += outputs_num * eval_loss
+      outputs_num_total += outputs_num
       for i in range(len(encoder_inputs)):
         if idx + i >= len(test_set): # evaluating iterates only once over the whole set
           break
@@ -278,23 +289,23 @@ def evaluate(model, test_set, source_vocab, target_vocab):
             wrong_tokens += 1
         acc_programs += all_correct
 
-    test_loss /= tot_programs
-    print("  eval: loss %.2f" % test_loss)
-    print("  eval: accuracy of tokens %.2f" % (acc_tokens * 1.0 / tot_tokens))
-    print("  eval: accuracy of programs %.2f" % (acc_programs * 1.0 / tot_programs))
+    test_loss /= outputs_num_total
+    logging.info("  eval: loss %.2f" % test_loss)
+    logging.info("  eval: accuracy of tokens %.2f" % (acc_tokens * 1.0 / tot_tokens))
+    logging.info("  eval: accuracy of programs %.2f" % (acc_programs * 1.0 / tot_programs))
     
-    print(acc_tokens, tot_tokens, acc_programs, tot_programs)
+    logging.info("acc_tokens: " + str(acc_tokens) + ", tot_tokens: " + str(tot_tokens) + ", acc_programs: " + str(acc_programs) + ", tot_programs: " + str(tot_programs))
 
 def train(train_data, val_data, source_vocab, target_vocab, source_serialize, target_serialize):
 
-  print ("Reading training and val data :")
+  logging.info("Reading training and val data :")
   train_set = data_utils.prepare_data(train_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize, args.pointer_gen, args.n_cpus)
   val_set = data_utils.prepare_data(val_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize, args.pointer_gen, args.n_cpus)  
   
   if not os.path.isdir(args.train_dir):
     os.makedirs(args.train_dir)
 
-  print("Creating %d layers of %d units." % (args.num_layers, args.hidden_size))
+  logging.info("Creating %d layers of %d units." % (args.num_layers, args.hidden_size))
   model = create_model(len(source_vocab), len(target_vocab), args.dropout_rate, args.max_source_len, args.max_target_len)
 
   step_time, loss = 0.0, 0.0
@@ -305,7 +316,8 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
 
   for epoch in range(args.num_epochs):
     random.shuffle(train_set)
-    for batch_idx in range(0, train_data_size, args.batch_size):
+    logging.info('Epoch %d out of %d' % (epoch+1, args.num_epochs))
+    for batch_idx in tqdm(range(0, train_data_size, args.batch_size)):
       start_time = time.time()
       encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size = model.get_batch(train_set, start_idx=batch_idx)
 
@@ -320,14 +332,14 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
       loss += step_loss / args.steps_per_checkpoint
       current_step += 1
 
-      print(current_step)
+      writer.add_scalar('Loss/train', step_loss, global_step = current_step)
 
       if current_step % args.learning_rate_decay_steps == 0 and model.learning_rate > 0.0001:
         model.decay_learning_rate(args.learning_rate_decay_factor)
 
       if current_step % args.steps_per_checkpoint == 0:
-        print ("learning rate %.4f step-time %.2f loss "
-               "%.2f" % (model.learning_rate, step_time, loss))
+        # logging.info("learning rate %.4f step-time %.2f loss "
+        #        "%.2f" % (model.learning_rate, step_time, loss))
         previous_losses.append(loss)
         ckpt_path = os.path.join(args.train_dir, "translate_" + str(current_step) + ".ckpt")
         ckpt = model.state_dict()
@@ -341,7 +353,11 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
           eval_loss, decoder_outputs = step_seq2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
         else:
           eval_loss, decoder_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
-        print("  eval: loss %.2f" % eval_loss)
+        writer.add_scalar('Loss/validation', eval_loss, global_step = current_step)
+        if args.network == 'tree2seq' or args.network == 'tree2tree':
+          writer.add_text('Example/source', val_data[0]['source_prog'], global_step = current_step)
+          writer.add_text('Example/target', val_data[0]['target_prog'], global_step = current_step)
+          writer.add_text('Example/prediction', decoder_outputs[0], global_step = current_step)
         sys.stdout.flush()
 
 def test(test_data, source_vocab, target_vocab, source_serialize, target_serialize):
@@ -421,7 +437,12 @@ parser.add_argument('--epsilon', type=float, default=1e-12,
 parser.add_argument('--n_cpus', type=int, default=16,
                     help='number of CPUs to use for preprocessing')
 
+parser.add_argument('--n_cpus', type=string, default="../logs",
+                    help='Directory for tensorboard logs')
+
 args = parser.parse_args()
+
+writer = SummaryWriter(args.logdir)
 
 def main():
   if args.network == 'seq2seq' or args.network == 'seq2tree':
