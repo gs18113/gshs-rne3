@@ -364,6 +364,7 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
           for i in range(1, args.num_examples + 1):
             target_vocab_rev = {v: k for k, v in target_vocab.items()}
             vocab_oovs_rev = {v+len(target_vocab)-1: k for k, v in val_set[i-1][4].items()}
+            del vocab_oovs_rev[len(target_vocab)-1]
             target_vocab_extended_rev = {**target_vocab_rev, **vocab_oovs_rev}
             writer.add_text('Example/source_' + str(i), ''.join(tree2str(val_data[0]['source_ast'])), global_step = current_step)
             writer.add_text('Example/target_' + str(i), ''.join(tree2str(val_data[0]['target_ast'])), global_step = current_step)
@@ -476,8 +477,8 @@ def main():
     val_data = json.load(open(args.val_data, 'r'))
 
     # While debugging
-    train_data = train_data[:200]
-    val_data = val_data[:200]
+    # train_data = train_data[:200]
+    # val_data = val_data[:200]
 
     train(train_data, val_data, source_vocab, target_vocab, source_serialize, target_serialize)
 
