@@ -90,18 +90,27 @@ class TreeManager(object):
 
         return current_id
 
-def tree2str(prediction_manager, current_idx, indent):
+def binarytree2str(prediction_manager, current_idx, vocab_rev):
     current_tree = prediction_manager.get_tree(current_idx)
     if current_tree.root == data_utils.EOS_ID:
         return []
-    prediction = ['\t' * indent + '{\n']
-    if '\n' not in current_tree.root:
-        prediction.append('\t' * (indent + 1) + current_tree.root + '\n')
-    else:
-        prediction.append('\t' * (indent + 1) + current_tree.root)
+    prediction = ['{']
+    prediction.append(current_tree.root)
     if current_tree.lchild is not None:
-        prediction = prediction + tree2str(prediction_manager, current_tree.lchild, indent + 1)
-    prediction.append('\t' * indent + '}\n')
+        prediction = prediction + binarytree2str(prediction_manager, current_tree.lchild)
+    prediction.append('}')
     if current_tree.rchild is not None:
-        prediction = prediction + tree2str(prediction_manager, current_tree.rchild, indent)
+        prediction = prediction + binarytree2str(prediction_manager, current_tree.rchild)
     return prediction
+
+def tree2str(self, current_node):
+    """
+    used for JSON-based tree with string as their root
+    """
+    ret = [current_node['root']]
+    if len(current_node['children']) != 0:
+        ret.append('{\n')
+        for child in current_node['children']:
+            ret += tree2str(child)
+        ret.append('}\n')
+    return ret

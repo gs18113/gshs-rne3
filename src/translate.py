@@ -361,9 +361,13 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
           eval_loss, decoder_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
         writer.add_scalar('Loss/validation', eval_loss, global_step = current_step)
         if args.network == 'tree2seq' or args.network == 'tree2tree':
-          writer.add_text('Example/source', ''.join(tree2str(val_data[0]['source_ast'], 0, 0)), global_step = current_step)
-          writer.add_text('Example/target', ''.join(tree2str(val_data[0]['target_prog'], 0, 0)), global_step = current_step)
-          writer.add_text('Example/prediction', ''.join(decoder_outputs[0]), global_step = current_step)
+          for i in range(1, args.num_examples + 1):
+            target_vocab_rev = {v:k for k, v in target_vocab}
+            vocab_oovs_rev = {v+len(target_vocab)-1: k for k, v in val_set[i-1][4].items()}
+            target_vocab_extended_rev = (**target_vocab_rev, **vocab_oovs_rev)
+            writer.add_text('Example/source_' + str(i), ''.join(tree2str(val_data[0]['source_ast'])), global_step = current_step)
+            writer.add_text('Example/target_' + str(i), ''.join(tree2str(val_data[0]['target_ast'])), global_step = current_step)
+            writer.add_text('Example/prediction_' + str(i), ''.join([target_vocab_extended_rev[id] for id in decoder_outputs[0]]), global_step = current_step)
         sys.stdout.flush()
 
 def test(test_data, source_vocab, target_vocab, source_serialize, target_serialize):
@@ -445,6 +449,8 @@ parser.add_argument('--n_cpus', type=int, default=16,
 
 parser.add_argument('--logdir', type=str, default="../logs",
                     help='Directory for tensorboard logs')
+parser.add_argument('--num_examples', type=int, default=1,
+                    help='Number of examples to generate')
 
 args = parser.parse_args()
 
