@@ -6,6 +6,7 @@ from Tree import *
 import copy
 from multiprocessing import Pool
 import gc
+import logging
 
 
 # Special vocabulary symbols
