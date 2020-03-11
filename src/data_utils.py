@@ -228,7 +228,7 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
     data.append(res)
   logging.info("_prepare_data finished")
   
-  gc.colilct()
+  gc.collect()
     
   if input_format == 'tree' and (not source_serialize):
     logging.info("build_trees start")
