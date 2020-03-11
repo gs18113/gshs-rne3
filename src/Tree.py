@@ -91,14 +91,14 @@ class TreeManager(object):
         return current_id
 
 def tree2str(prediction_manager, current_idx):
-    if current_idx == None:
-      return []
     current_tree = prediction_manager.get_tree(current_idx)
+    if current_tree.root == data_utils.EOS_ID:
+        return []
     prediction = ['{']
     prediction.append(current_tree.root)
     if current_tree.lchild is not None:
-      prediction = prediction + tree2str(prediction_manager, current_tree.lchild)
+        prediction = prediction + tree2str(prediction_manager, current_tree.lchild)
     prediction.append('}')
     if current_tree.rchild is not None:
-      prediction = prediction + tree2str(prediction_manager, current_tree.rchild)
+        prediction = prediction + tree2str(prediction_manager, current_tree.rchild)
     return prediction
