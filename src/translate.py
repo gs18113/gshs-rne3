@@ -437,7 +437,7 @@ parser.add_argument('--epsilon', type=float, default=1e-12,
 parser.add_argument('--n_cpus', type=int, default=16,
                     help='number of CPUs to use for preprocessing')
 
-parser.add_argument('--n_cpus', type=string, default="../logs",
+parser.add_argument('--logdir', type=str, default="../logs",
                     help='Directory for tensorboard logs')
 
 args = parser.parse_args()
