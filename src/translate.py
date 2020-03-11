@@ -24,6 +24,9 @@ import pickle
 import logging
 from tqdm import tqdm
 
+import resource
+rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+resource.setrlimit(resource.RLIMIT_NOFILE, (500000, rlimit[1]))
 
 from torch.utils.tensorboard import SummaryWriter
 
