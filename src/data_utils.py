@@ -228,7 +228,7 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
     data.append(res)
   logging.info("_prepare_data finished")
   
-  gc.collect()
+  # gc.collect()
     
   if input_format == 'tree' and (not source_serialize):
     logging.info("build_trees start")
@@ -263,8 +263,6 @@ def _build_trees(arguments):
       target_trees_extended.build_binary_tree_from_dict(target_extended)
     else:
       target_trees_extended = None
-    logging.ino("DEBUGGING")
-    exit(0)
     return (source_trees, target_trees, source_trees_oov_ids, target_trees_extended, vocab_oovs)
 
 
