@@ -10,13 +10,13 @@ import logging
 
 
 # Special vocabulary symbols
-_PAD = b"_PAD"
-_GO = b"_GO"
-_EOS = b"_EOS"
-_UNK = b"_UNK"
-_NT = b"_NT"
-_LEFT_BRACKET = b"("
-_RIGHT_BRACKET = b")"
+_PAD = "_PAD"
+_GO = "_GO"
+_EOS = "_EOS"
+_UNK = "_UNK"
+_NT = "_NT"
+_LEFT_BRACKET = "("
+_RIGHT_BRACKET = ")"
 _START_VOCAB = [_UNK, _GO, _EOS, _PAD, _NT, _LEFT_BRACKET, _RIGHT_BRACKET]
 
 
