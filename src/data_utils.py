@@ -263,7 +263,8 @@ def _build_trees(arguments):
       target_trees_extended.build_binary_tree_from_dict(target_extended)
     else:
       target_trees_extended = None
-
+    logging.ino("DEBUGGING")
+    exit(0)
     return (source_trees, target_trees, source_trees_oov_ids, target_trees_extended, vocab_oovs)
 
 
