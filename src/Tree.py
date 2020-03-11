@@ -90,15 +90,15 @@ class TreeManager(object):
 
         return current_id
 
-def tree2seq(prediction_manager, current_idx):
-    current_tree = prediction_manager.get_tree(current_idx)
-    if current_tree.prediction == data_utils.EOS_ID:
+def tree2str(prediction_manager, current_idx):
+    if current_idx == None:
       return []
-    prediction = [data_utils.LEFT_BRACKET_ID]
-    prediction.append(current_tree.prediction)
+    current_tree = prediction_manager.get_tree(current_idx)
+    prediction = ['{']
+    prediction.append(current_tree.root)
     if current_tree.lchild is not None:
-      prediction = prediction + tree2seq(prediction_manager, current_tree.lchild)
-    prediction.append(data_utils.RIGHT_BRACKET_ID)
+      prediction = prediction + tree2str(prediction_manager, current_tree.lchild)
+    prediction.append('}')
     if current_tree.rchild is not None:
-      prediction = prediction + tree2seq(prediction_manager, current_tree.rchild)
+      prediction = prediction + tree2str(prediction_manager, current_tree.rchild)
     return prediction
