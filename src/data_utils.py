@@ -213,7 +213,6 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
   global _prepare_data
 
 
-  pool = Pool(n_cpus)
   logging.info("Generating input values for _prepare_data function")
   init_data_len = len(init_data)
   source_vocab_dup = [source_vocab] * init_data_len
@@ -224,8 +223,9 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
   target_serialize_dup = [target_serialize] * init_data_len
   pointer_gen_dup = [pointer_gen] * init_data_len
   logging.info("_prepare_data start")
-  for res in pool.map(_prepare_data, zip(init_data, source_vocab_dup, target_vocab_dup, input_format_dup, output_format_dup, source_serialize_dup, target_serialize_dup, pointer_gen_dup)):
-    data.append(res)
+  with Pool(n_cpus) as pool:
+    for res in pool.map(_prepare_data, zip(init_data, source_vocab_dup, target_vocab_dup, input_format_dup, output_format_dup, source_serialize_dup, target_serialize_dup, pointer_gen_dup)):
+      data.append(res)
   logging.info("_prepare_data finished")
   
   gc.collect()
@@ -269,8 +269,8 @@ def _build_trees(arguments):
 
 def build_trees(init_dataset, n_cpus, target_serialize=False):
   data_set = []
-  pool = Pool(n_cpus)
   target_serialize_dup = [target_serialize] * len(init_dataset)
-  for res in pool.imap(_build_trees, zip(init_dataset, target_serialize_dup)):
-    data_set.append(res)
+  with Pool(n_cpus) as pool:
+    for res in pool.imap(_build_trees, zip(init_dataset, target_serialize_dup)):
+      data_set.append(res)
   return data_set
