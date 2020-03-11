@@ -362,6 +362,8 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
         writer.add_scalar('Loss/validation', eval_loss, global_step = current_step)
         if args.network == 'tree2seq' or args.network == 'tree2tree':
           for i in range(1, args.num_examples + 1):
+            print("DEBUGGING")
+            print(target_vocab)
             target_vocab_rev = {v:k for k, v in target_vocab}
             vocab_oovs_rev = {v+len(target_vocab)-1: k for k, v in val_set[i-1][4].items()}
             target_vocab_extended_rev = {**target_vocab_rev, **vocab_oovs_rev}
