@@ -224,7 +224,7 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
   pointer_gen_dup = [pointer_gen] * init_data_len
   logging.info("_prepare_data start")
   with Pool(n_cpus) as pool:
-    for res in pool.map(_prepare_data, zip(init_data, source_vocab_dup, target_vocab_dup, input_format_dup, output_format_dup, source_serialize_dup, target_serialize_dup, pointer_gen_dup)):
+    for res in pool.imap(_prepare_data, zip(init_data, source_vocab_dup, target_vocab_dup, input_format_dup, output_format_dup, source_serialize_dup, target_serialize_dup, pointer_gen_dup)):
       data.append(res)
   logging.info("_prepare_data finished")
   
