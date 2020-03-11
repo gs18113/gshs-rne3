@@ -271,6 +271,6 @@ def build_trees(init_dataset, n_cpus, target_serialize=False):
   data_set = []
   pool = Pool(n_cpus)
   target_serialize_dup = [target_serialize] * len(init_dataset)
-  for res in pool.map(_build_trees, zip(init_dataset, target_serialize_dup)):
+  for res in pool.imap(_build_trees, zip(init_dataset, target_serialize_dup)):
     data_set.append(res)
   return data_set
