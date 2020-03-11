@@ -95,7 +95,10 @@ def tree2str(prediction_manager, current_idx, indent):
     if current_tree.root == data_utils.EOS_ID:
         return []
     prediction = ['\t' * indent + '{\n']
-    prediction.append('\t' * indent + current_tree.root)
+    if '\n' not in current_tree.root:
+        prediction.append('\t' * indent + current_tree.root)
+    else:
+        prediction.append('\t' * indent + current_tree.root + '\n')
     if current_tree.lchild is not None:
         prediction = prediction + tree2str(prediction_manager, current_tree.lchild, indent + 1)
     prediction.append('\t' * indent + '}\n')
