@@ -232,39 +232,46 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
     
   if input_format == 'tree' and (not source_serialize):
     logging.info("build_trees start")
-    data = build_trees(data, target_serialize)
+    data = build_trees(data, n_cpus, target_serialize)
     logging.info("build_trees finished")
   return data
 
-def build_trees(init_dataset, target_serialize=False):
+def _build_trees(arguments):
+  (source, target, source_oov_ids, target_extended, vocab_oovs), target_serialize = arguments
+  source_trees = TreeManager()
+  source_trees.build_binary_tree_from_dict(source)
+  if source_oov_ids is not None:
+    source_trees_oov_ids = TreeManager()
+    source_trees_oov_ids.build_binary_tree_from_dict(source_oov_ids)
+  else:
+    source_trees_oov_ids = None
+
+  if target_serialize:
+    target_seq = target[:]
+    if target_extended is not None:
+      target_seq_extended = target_extended[:]
+    else:
+      target_trees_extended = None
+
+    return (source_trees, target_seq, source_trees_oov_ids, target_seq_extended, vocab_oovs)
+
+  else:
+    target_trees = TreeManager()
+    target_trees.build_binary_tree_from_dict(target)
+    if target_extended is not None:
+      target_trees_extended = TreeManager()
+      target_trees_extended.build_binary_tree_from_dict(target_extended)
+    else:
+      target_trees_extended = None
+
+    return (source_trees, target_trees, source_trees_oov_ids, target_trees_extended, vocab_oovs)
+
+
+
+def build_trees(init_dataset, n_cpus, target_serialize=False):
   data_set = []
-  for (source, target, source_oov_ids, target_extended, vocab_oovs) in init_dataset:
-    source_trees = TreeManager()
-    source_trees.build_binary_tree_from_dict(source)
-    if source_oov_ids is not None:
-      source_trees_oov_ids = TreeManager()
-      source_trees_oov_ids.build_binary_tree_from_dict(source_oov_ids)
-    else:
-      source_trees_oov_ids = None
-
-    if target_serialize:
-      target_seq = target[:]
-      if target_extended is not None:
-        target_seq_extended = target_extended[:]
-      else:
-        target_trees_extended = None
-
-      data_set.append((source_trees, target_seq, source_trees_oov_ids, target_seq_extended, vocab_oovs))
-
-    else:
-      target_trees = TreeManager()
-      target_trees.build_binary_tree_from_dict(target)
-      if target_extended is not None:
-        target_trees_extended = TreeManager()
-        target_trees_extended.build_binary_tree_from_dict(target_extended)
-      else:
-        target_trees_extended = None
-
-      data_set.append((source_trees, target_trees, source_trees_oov_ids, target_trees_extended, vocab_oovs))
-
+  pool = Pool(n_cpus)
+  target_serialize_dup = [target_serialize] * len(init_dataset)
+  for res in pool.map(_build_trees, zip(init_dataset, target_serialize_dup)):
+    data_set.append(res)
   return data_set
