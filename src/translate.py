@@ -24,6 +24,8 @@ import pickle
 import logging
 from tqdm import tqdm
 
+from Tree import tree2str
+
 import resource
 rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
 resource.setrlimit(resource.RLIMIT_NOFILE, (500000, rlimit[1]))
@@ -359,9 +361,9 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
           eval_loss, decoder_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
         writer.add_scalar('Loss/validation', eval_loss, global_step = current_step)
         if args.network == 'tree2seq' or args.network == 'tree2tree':
-          writer.add_text('Example/source', val_data[0]['source_prog'], global_step = current_step)
-          writer.add_text('Example/target', val_data[0]['target_prog'], global_step = current_step)
-          writer.add_text('Example/prediction', decoder_outputs[0], global_step = current_step)
+          writer.add_text('Example/source', ''.join(tree2str(val_data[0]['source_ast'], 0, 0)), global_step = current_step)
+          writer.add_text('Example/target', ''.join(tree2str(val_data[0]['target_prog'], 0, 0)), global_step = current_step)
+          writer.add_text('Example/prediction', ''.join(decoder_outputs[0]), global_step = current_step)
         sys.stdout.flush()
 
 def test(test_data, source_vocab, target_vocab, source_serialize, target_serialize):
