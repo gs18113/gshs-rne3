@@ -271,6 +271,9 @@ def build_trees(init_dataset, n_cpus, target_serialize=False):
   data_set = []
   target_serialize_dup = [target_serialize] * len(init_dataset)
   with Pool(n_cpus) as pool:
-    for res in pool.imap(_build_trees, zip(init_dataset, target_serialize_dup)):
-      data_set.append(res)
+#    for res in pool.imap(_build_trees, zip(init_dataset, target_serialize_dup)):
+#      data_set.append(res)
+#Debugging
+    for arguments in zip(init_dataset, target_serialize_dup):
+      data_set.append(_build_trees(arguments))
   return data_set
