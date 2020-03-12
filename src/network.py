@@ -846,6 +846,7 @@ class Tree2TreeModel(nn.Module):
         print("DEBUG")
         print(extra_zeros.shape)
         print(encoder_outputs_oov_ids.shape)
+        print(attention_dist.shape)
         print("DEBUG")
         output_attn = extra_zeros.scatter_add(1, encoder_outputs_oov_ids.squeeze(), attention_dist)
         output_final = torch.cat([output_vocab, output_attn[:, 1:]], dim=1)
