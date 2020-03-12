@@ -178,7 +178,7 @@ def get_ext_id2target_ext_id(vocab_oovs, target_vocab):
 def prepare_data(init_data, source_vocab, target_vocab, input_format, output_format, source_serialize, target_serialize, pointer_gen, n_cpus):
   data = []
 
-  logging.info("repare_data start")
+  logging.info("prepare_data start")
   for prog in init_data:
     if input_format == 'seq':
       source_prog = prog['source_prog']
