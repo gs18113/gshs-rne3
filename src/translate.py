@@ -372,9 +372,10 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
             target_vocab_rev = {v: k for k, v in target_vocab.items()}
             vocab_oovs_rev = {v+len(target_vocab)-1: k for k, v in val_set[i-1][4].items()}
             target_vocab_extended_rev = {**target_vocab_rev, **vocab_oovs_rev}
-            text = 'source: ' + ''.join(tree2str(val_data[i-1]['source_ast'])) + '\n' \
-              + 'target: ' + ''.join(tree2str(val_data[i-1]['target_ast'])) + '\n' \
-              + 'prediction: ' + ''.join([target_vocab_extended_rev[id] for id in decoder_outputs[i-1]])
+            text = 'source:\n' + ''.join(tree2str(val_data[i-1]['source_ast'])) + '\n\n' \
+              + 'target:\n' + ''.join(tree2str(val_data[i-1]['target_ast'])) + '\n\n' \
+              + 'prediction:\n' + ''.join([target_vocab_extended_rev[id] for id in decoder_outputs[i-1]])
+            writer.add_text('Example/validation_' + str(idx), text, global_step = current_step)
         sys.stdout.flush()
 
 def test(test_data, source_vocab, target_vocab, source_serialize, target_serialize):
