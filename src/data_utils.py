@@ -166,7 +166,7 @@ def build_vocab_oovs(code, source_vocab, current_target_vocab, format, vocab_oov
         current_vocab_oovs_id += 1
         current_target_vocab[str(tok)] = current_target_vocab_id
         current_target_vocab_id += 1
-  return vocab_oovs, current_target_vocab
+  return (vocab_oovs, current_target_vocab)
 
 def get_ext_id2target_ext_id(vocab_oovs, target_vocab):
   # Converts id starting from 1 to extended target_vocab's id
@@ -189,7 +189,7 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
     else:
       target_prog = prog['target_ast']
 
-    vocab_oovs, target_vocab_extended = build_vocab_oovs(source_prog, copy.deepcopy(
+    (vocab_oovs, target_vocab_extended) = build_vocab_oovs(source_prog, copy.deepcopy(
         source_vocab), copy.deepcopy(target_vocab), input_format) if pointer_gen else (None, None)
 
     # UNK token is 0, so the result of *_to_token_ids(source_prog, vocab_oovs) 
