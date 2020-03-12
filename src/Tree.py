@@ -118,7 +118,7 @@ def tree2str(current_node):
 def trees_strip(data):
     ret = []
     for prog in data:
-        prog['soruce_ast'] = json_strip(prog['soruce_ast'])
+        prog['source_ast'] = json_strip(prog['source_ast'])
         prog['target_ast'] = json_strip(prog['target_ast'])
         ret.append(prog)
     return ret
