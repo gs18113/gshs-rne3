@@ -843,6 +843,10 @@ class Tree2TreeModel(nn.Module):
       attention_dist = attention_dist * (1-p_gen)
       if extra_zeros is not None:
         assert extra_zeros.shape[0] == encoder_outputs_oov_ids.shape[0]
+        print("DEBUG")
+        print(extra_zeros.shape)
+        print(encoder_outputs_oov_ids.shape)
+        print("DEBUG")
         output_attn = extra_zeros.scatter_add(1, encoder_outputs_oov_ids.squeeze(), attention_dist)
         output_final = torch.cat([output_vocab, output_attn[:, 1:]], dim=1)
 
