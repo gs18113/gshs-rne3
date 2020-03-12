@@ -196,18 +196,18 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
     # includes 0s where the token is not included in the vocab_oovs(i.e. is included in the original vocab).
 
     if input_format == 'seq':
-      source_prog = raw_program_to_token_ids(source_prog, source_vocab)
+      source_prog_original = raw_program_to_token_ids(source_prog, source_vocab)
       target_prog_oov_ids = raw_program_to_token_ids(source_prog, vocab_oovs) if pointer_gen else None
     else:
-      source_prog = ast_to_token_ids(source_prog, source_vocab, source_serialize)
+      source_prog_original = ast_to_token_ids(source_prog, source_vocab, source_serialize)
       source_prog_oov_ids = ast_to_token_ids(source_prog, vocab_oovs, source_serialize) if pointer_gen else None
     if output_format == 'seq':
-      target_prog = raw_program_to_token_ids(target_prog, target_vocab)
+      target_prog_original = raw_program_to_token_ids(target_prog, target_vocab)
       target_prog_extended = raw_program_to_token_ids(target_prog, target_vocab_extended) if pointer_gen else None
     else:
-      target_prog = ast_to_token_ids(target_prog, target_vocab, target_serialize)
+      target_prog_original = ast_to_token_ids(target_prog, target_vocab, target_serialize)
       target_prog_extended = ast_to_token_ids(target_prog, target_vocab_extended, target_serialize) if pointer_gen else None
-    data.append((source_prog, target_prog, source_prog_oov_ids, target_prog_extended, vocab_oovs))
+    data.append((source_prog_original, target_prog_original, source_prog_oov_ids, target_prog_extended, vocab_oovs))
 
   logging.info("prepare_data finished")
   
