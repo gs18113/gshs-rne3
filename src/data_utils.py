@@ -4,7 +4,6 @@ import json
 import pickle
 from Tree import *
 import copy
-from multiprocessing import Pool
 import gc
 import logging
 
@@ -176,104 +175,76 @@ def get_ext_id2target_ext_id(vocab_oovs, target_vocab):
     return id+diff
   return _ext_id2target_ext_id
 
-def _prepare_data(arguments):
-  prog, source_vocab, target_vocab, input_format, output_format, source_serialize, target_serialize, pointer_gen = arguments
-  if input_format == 'seq':
-    source_prog = prog['source_prog']
-  else:
-    source_prog = prog['source_ast']
-  if output_format == 'seq':
-    target_prog = prog['target_prog']
-  else:
-    target_prog = prog['target_ast']
-
-  vocab_oovs, target_vocab_extended = build_vocab_oovs(source_prog, copy.deepcopy(
-      source_vocab), copy.deepcopy(target_vocab), input_format) if pointer_gen else (None, None)
-
-  # UNK token is 0, so the result of *_to_token_ids(source_prog, vocab_oovs) 
-  # includes 0s where the token is not included in the vocab_oovs(i.e. is included in the original vocab).
-
-  if input_format == 'seq':
-    source_prog = raw_program_to_token_ids(source_prog, source_vocab)
-    target_prog_oov_ids = raw_program_to_token_ids(source_prog, vocab_oovs) if pointer_gen else None
-  else:
-    source_prog = ast_to_token_ids(source_prog, source_vocab, source_serialize)
-    source_prog_oov_ids = ast_to_token_ids(source_prog, vocab_oovs, source_serialize) if pointer_gen else None
-  if output_format == 'seq':
-    target_prog = raw_program_to_token_ids(target_prog, target_vocab)
-    target_prog_extended = raw_program_to_token_ids(target_prog, target_vocab_extended) if pointer_gen else None
-  else:
-    target_prog = ast_to_token_ids(target_prog, target_vocab, target_serialize)
-    target_prog_extended = ast_to_token_ids(target_prog, target_vocab_extended, target_serialize) if pointer_gen else None
-  return (source_prog, target_prog, source_prog_oov_ids, target_prog_extended, vocab_oovs)
-
 def prepare_data(init_data, source_vocab, target_vocab, input_format, output_format, source_serialize, target_serialize, pointer_gen, n_cpus):
   data = []
 
-  global _prepare_data
+  logging.info("repare_data start")
+  for prog in init_data:
+    if input_format == 'seq':
+      source_prog = prog['source_prog']
+    else:
+      source_prog = prog['source_ast']
+    if output_format == 'seq':
+      target_prog = prog['target_prog']
+    else:
+      target_prog = prog['target_ast']
 
+    vocab_oovs, target_vocab_extended = build_vocab_oovs(source_prog, copy.deepcopy(
+        source_vocab), copy.deepcopy(target_vocab), input_format) if pointer_gen else (None, None)
 
-  logging.info("Generating input values for _prepare_data function")
-  init_data_len = len(init_data)
-  source_vocab_dup = [source_vocab] * init_data_len
-  target_vocab_dup = [target_vocab] * init_data_len
-  input_format_dup = [input_format] * init_data_len
-  output_format_dup = [output_format] * init_data_len
-  source_serialize_dup = [source_serialize] * init_data_len
-  target_serialize_dup = [target_serialize] * init_data_len
-  pointer_gen_dup = [pointer_gen] * init_data_len
-  logging.info("_prepare_data start")
-  with Pool(n_cpus) as pool:
-    for res in pool.imap(_prepare_data, zip(init_data, source_vocab_dup, target_vocab_dup, input_format_dup, output_format_dup, source_serialize_dup, target_serialize_dup, pointer_gen_dup)):
-      data.append(res)
-  logging.info("_prepare_data finished")
+    # UNK token is 0, so the result of *_to_token_ids(source_prog, vocab_oovs) 
+    # includes 0s where the token is not included in the vocab_oovs(i.e. is included in the original vocab).
+
+    if input_format == 'seq':
+      source_prog = raw_program_to_token_ids(source_prog, source_vocab)
+      target_prog_oov_ids = raw_program_to_token_ids(source_prog, vocab_oovs) if pointer_gen else None
+    else:
+      source_prog = ast_to_token_ids(source_prog, source_vocab, source_serialize)
+      source_prog_oov_ids = ast_to_token_ids(source_prog, vocab_oovs, source_serialize) if pointer_gen else None
+    if output_format == 'seq':
+      target_prog = raw_program_to_token_ids(target_prog, target_vocab)
+      target_prog_extended = raw_program_to_token_ids(target_prog, target_vocab_extended) if pointer_gen else None
+    else:
+      target_prog = ast_to_token_ids(target_prog, target_vocab, target_serialize)
+      target_prog_extended = ast_to_token_ids(target_prog, target_vocab_extended, target_serialize) if pointer_gen else None
+    data.append((source_prog, target_prog, source_prog_oov_ids, target_prog_extended, vocab_oovs))
+
+  logging.info("prepare_data finished")
   
-  gc.collect()
-    
   if input_format == 'tree' and (not source_serialize):
     logging.info("build_trees start")
     data = build_trees(data, n_cpus, target_serialize)
     logging.info("build_trees finished")
   return data
 
-def _build_trees(arguments):
-  (source, target, source_oov_ids, target_extended, vocab_oovs), target_serialize = arguments
-  source_trees = TreeManager()
-  source_trees.build_binary_tree_from_dict(source)
-  if source_oov_ids is not None:
-    source_trees_oov_ids = TreeManager()
-    source_trees_oov_ids.build_binary_tree_from_dict(source_oov_ids)
-  else:
-    source_trees_oov_ids = None
-
-  if target_serialize:
-    target_seq = target[:]
-    if target_extended is not None:
-      target_seq_extended = target_extended[:]
-    else:
-      target_trees_extended = None
-
-    return (source_trees, target_seq, source_trees_oov_ids, target_seq_extended, vocab_oovs)
-
-  else:
-    target_trees = TreeManager()
-    target_trees.build_binary_tree_from_dict(target)
-    if target_extended is not None:
-      target_trees_extended = TreeManager()
-      target_trees_extended.build_binary_tree_from_dict(target_extended)
-    else:
-      target_trees_extended = None
-    return (source_trees, target_trees, source_trees_oov_ids, target_trees_extended, vocab_oovs)
-
-
-
 def build_trees(init_dataset, n_cpus, target_serialize=False):
   data_set = []
-  target_serialize_dup = [target_serialize] * len(init_dataset)
-  with Pool(n_cpus) as pool:
-#    for res in pool.imap(_build_trees, zip(init_dataset, target_serialize_dup)):
-#      data_set.append(res)
-#Debugging
-    for arguments in zip(init_dataset, target_serialize_dup):
-      data_set.append(_build_trees(arguments))
+  for (source, target, source_oov_ids, target_extended, vocab_oovs) in init_dataset:
+    source_trees = TreeManager()
+    source_trees.build_binary_tree_from_dict(source)
+    if source_oov_ids is not None:
+      source_trees_oov_ids = TreeManager()
+      source_trees_oov_ids.build_binary_tree_from_dict(source_oov_ids)
+    else:
+      source_trees_oov_ids = None
+
+    if target_serialize:
+      target_seq = target[:]
+      if target_extended is not None:
+        target_seq_extended = target_extended[:]
+      else:
+        target_trees_extended = None
+
+      data_set.append((source_trees, target_seq, source_trees_oov_ids, target_seq_extended, vocab_oovs))
+
+    else:
+      target_trees = TreeManager()
+      target_trees.build_binary_tree_from_dict(target)
+      if target_extended is not None:
+        target_trees_extended = TreeManager()
+        target_trees_extended.build_binary_tree_from_dict(target_extended)
+      else:
+        target_trees_extended = None
+      data_set.append((source_trees, target_trees, source_trees_oov_ids, target_trees_extended, vocab_oovs))
+
   return data_set
