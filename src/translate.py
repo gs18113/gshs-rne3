@@ -353,7 +353,7 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
         # logging.info("learning rate %.4f step-time %.2f loss "
         #        "%.2f" % (model.learning_rate, step_time, loss))
         previous_losses.append(loss)
-        ckpt_path = os.path.join(args.train_dir, "translate_" + str(current_step) + ".ckpt")
+        ckpt_path = os.path.join(args.train_dir, "translate_" + args.exp_name + '_' + str(current_step) + ".ckpt")
         ckpt = model.state_dict()
         torch.save(ckpt, ckpt_path)
         step_time, loss = 0.0, 0.0
@@ -372,9 +372,9 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
             target_vocab_rev = {v: k for k, v in target_vocab.items()}
             vocab_oovs_rev = {v+len(target_vocab)-1: k for k, v in val_set[i-1][4].items()}
             target_vocab_extended_rev = {**target_vocab_rev, **vocab_oovs_rev}
-            writer.add_text('Example/source_' + str(idx), ''.join(tree2str(val_data[i-1]['source_ast'])), global_step = current_step)
-            writer.add_text('Example/target_' + str(idx), ''.join(tree2str(val_data[i-1]['target_ast'])), global_step = current_step)
-            writer.add_text('Example/prediction_' + str(idx), ''.join([target_vocab_extended_rev[id] for id in decoder_outputs[i-1]]), global_step = current_step)
+            text = 'source: ' + ''.join(tree2str(val_data[i-1]['source_ast'])) + '\n' \
+              + 'target: ' + ''.join(tree2str(val_data[i-1]['target_ast'])) + '\n' \
+              + 'prediction: ' + ''.join([target_vocab_extended_rev[id] for id in decoder_outputs[i-1]])
         sys.stdout.flush()
 
 def test(test_data, source_vocab, target_vocab, source_serialize, target_serialize):
@@ -458,6 +458,9 @@ parser.add_argument('--logdir', type=str, default="../logs",
                     help='Directory for tensorboard logs')
 parser.add_argument('--num_examples', type=int, default=1,
                     help='Number of examples to generate')
+
+parser.add_argument('--exp_name', type=str, required=True,
+                    help='Experiment name')
 
 args = parser.parse_args()
 
