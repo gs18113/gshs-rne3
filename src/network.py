@@ -1086,6 +1086,6 @@ class Tree2TreeModel(nn.Module):
 
   def loss_function(self, predictions, target, epsilon):
     true_predictions = torch.gather(predictions, 1, target.unsqueeze(1)).squeeze()
-    loss = -torch.log(predictions + epsilon)
+    loss = -torch.log(true_predictions + epsilon)
     return loss.sum()
 
