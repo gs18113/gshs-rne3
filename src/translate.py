@@ -483,8 +483,8 @@ def main():
     val_data = json.load(open(args.val_data, 'r'))
 
     # While debugging
-    # train_data = train_data[:200]
-    # val_data = val_data[:200]
+    train_data = train_data[:200]
+    val_data = val_data[:200]
 
     train(train_data, val_data, source_vocab, target_vocab, source_serialize, target_serialize)
 
