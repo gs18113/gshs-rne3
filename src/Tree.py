@@ -115,16 +115,16 @@ def tree2str(current_node):
         ret.append('}\n')
     return ret
 
-def json_strip(data):
+def trees_strip(data):
     ret = []
     for prog in data:
-        ret.append(_json_strip(prog))
+        ret.append(json_strip(prog))
     return ret
 
-def _json_strip(tree):
+def json_strip(tree):
     ret = {}
     ret['root'] = tree['root'].strip()
     ret['children'] = []
     for child in tree['children']:
-        ret['children'].append(_json_strip(child))
+        ret['children'].append(json_strip(child))
     return ret

@@ -30,7 +30,7 @@ import pickle
 import logging
 from tqdm import tqdm
 
-from Tree import tree2str
+from Tree import tree2str, trees_strip
 
 import resource
 rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
@@ -474,13 +474,13 @@ def main():
     target_serialize = False
   if args.no_attention:
     args.no_pf = True
-  train_data = json.load(open(args.train_data, 'r'))
+  train_data = trees_strip(json.load(open(args.train_data, 'r')))
   source_vocab, target_vocab = data_utils.build_vocab(train_data, args.vocab_filename, args.input_format, args.output_format, args.pointer_gen)
   if args.test:
-    test_data = json.load(open(args.test_data, 'r'))
+    test_data = trees_strip(json.load(open(args.test_data, 'r')))
     test(test_data, source_vocab, target_vocab, source_serialize, target_serialize)
   else:
-    val_data = json.load(open(args.val_data, 'r'))
+    val_data = trees_strip(json.load(open(args.val_data, 'r')))
 
     # While debugging
     train_data = train_data[:2]
