@@ -367,13 +367,14 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
           eval_loss, decoder_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
         writer.add_scalar('Loss/validation', eval_loss, global_step = current_step)
         if args.network == 'tree2seq' or args.network == 'tree2tree':
-          for i in range(1, args.num_examples + 1):
+          data_samples = [random.randint(1, args.batch_size) for _ in range(args.num_examples)]
+          for i in data_samples:
             target_vocab_rev = {v: k for k, v in target_vocab.items()}
             vocab_oovs_rev = {v+len(target_vocab)-1: k for k, v in val_set[i-1][4].items()}
             target_vocab_extended_rev = {**target_vocab_rev, **vocab_oovs_rev}
-            writer.add_text('Example/source_' + str(i), ''.join(tree2str(val_data[0]['source_ast'])), global_step = current_step)
-            writer.add_text('Example/target_' + str(i), ''.join(tree2str(val_data[0]['target_ast'])), global_step = current_step)
-            writer.add_text('Example/prediction_' + str(i), ''.join([target_vocab_extended_rev[id] for id in decoder_outputs[0]]), global_step = current_step)
+            writer.add_text('Example/source_' + str(i), ''.join(tree2str(val_data[i-1]['source_ast'])), global_step = current_step)
+            writer.add_text('Example/target_' + str(i), ''.join(tree2str(val_data[i-1]['target_ast'])), global_step = current_step)
+            writer.add_text('Example/prediction_' + str(i), ''.join([target_vocab_extended_rev[id] for id in decoder_outputs[i-1]]), global_step = current_step)
         sys.stdout.flush()
 
 def test(test_data, source_vocab, target_vocab, source_serialize, target_serialize):
