@@ -1085,10 +1085,6 @@ class Tree2TreeModel(nn.Module):
     return encoder_managers, decoder_managers, encoder_managers_oov_ids, decoder_managers_extended, extra_zeros_size
 
   def loss_function(self, predictions, target, epsilon):
-    print("DEBUGGING")
-    print("predictions.shape: ", predictions.shape)
-    print("target.shape: ", target.shape)
-    print("DEBUGGING")
     true_predictions = torch.gather(predictions, 1, target.unsqueeze(1)).squeeze()
     loss = -torch.log(true_predictions + epsilon)
     return loss.sum()
