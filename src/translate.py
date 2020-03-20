@@ -465,7 +465,7 @@ parser.add_argument('--exp_name', type=str, required=True,
 
 args = parser.parse_args()
 
-writer = SummaryWriter(os.join(args.logdir, args.exp_name))
+writer = SummaryWriter(os.path.join(args.logdir, args.exp_name))
 
 def main():
   if args.network == 'seq2seq' or args.network == 'seq2tree':
