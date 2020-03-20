@@ -1,2 +1,0 @@
-#!/bin/bash
-python translate.py --network tree2tree --train_dir ../model_ckpt/tree2tree/ --input_format tree --output_format tree --train_data ../../tree2tree_master/tree2tree_dataset/CS-JS/AS/preprocessed_progs_train.json --val_data ../../tree2tree_master/tree2tree_dataset/CS-JS/AS/preprocessed_progs_valid.json --test_data ../../tree2tree_master/tree2tree_dataset/CS-JS/AS/preprocessed_progs_valid.json
