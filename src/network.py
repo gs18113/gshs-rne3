@@ -772,6 +772,7 @@ class Tree2TreeModel(nn.Module):
       self.decoder_l = nn.LSTM(input_size=self.embedding_size + self.hidden_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True, dropout=self.dropout_rate)
       self.decoder_r = nn.LSTM(input_size=self.embedding_size + self.hidden_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True, dropout=self.dropout_rate)
 
+    self.bmm_linear = nn.Linear(self.hidden_size, self.hidden_size)
     self.attention_linear = nn.Linear(self.hidden_size * 2, self.hidden_size, bias=True)
     self.attention_tanh = nn.Tanh()
 
@@ -798,7 +799,7 @@ class Tree2TreeModel(nn.Module):
     self.optimizer.step()
 
   def attention(self, encoder_outputs, attention_masks, decoder_output):
-    dotted = torch.bmm(encoder_outputs, decoder_output.unsqueeze(2))
+    dotted = torch.bmm(encoder_outputs, self.bmm_linear(decoder_output).unsqueeze(2)) # batch_size*source_length*hidden_size, batch_size*hidden_size
     dotted = dotted.squeeze()
     if len(dotted.size()) == 1:
       dotted = dotted.unsqueeze(0)
