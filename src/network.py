@@ -1005,8 +1005,9 @@ class Tree2TreeModel(nn.Module):
       # prediction_managers[idx].trees[current_prediction_idx].state = encoder_h_state[idx].unsqueeze(0), encoder_c_state[idx].unsqueeze(0)
       prediction_managers[idx].trees[current_prediction_idx].state = torch.zeros([1, self.hidden_size]), torch.zeros([1, self.hidden_size])
       if self.cuda_flag:
-        prediction_managers[idx].trees[current_prediction_idx].state[0] = prediction_managers[idx].trees[current_prediction_idx].state[0].cuda()
-        prediction_managers[idx].trees[current_prediction_idx].state[1] = prediction_managers[idx].trees[current_prediction_idx].state[1].cuda()
+        prediction_managers[idx].trees[current_prediction_idx].state = \
+        prediction_managers[idx].trees[current_prediction_idx].state[0].cuda(), \
+        prediction_managers[idx].trees[current_prediction_idx].state[1].cuda()
       prediction_managers[idx].trees[current_prediction_idx].target = 0
       queue.append((idx, current_prediction_idx))
 
