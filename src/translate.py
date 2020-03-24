@@ -487,9 +487,9 @@ def main():
     val_data = trees_strip(json.load(open(args.val_data, 'r')))
 
     # While debugging
-    train_data = train_data[:2]
-    val_data = train_data[:2]
-    args.batch_size = 2
+    train_data = train_data[:1]
+    val_data = train_data[:1]
+    args.batch_size = 1
     args.steps_per_checkpoint = 10
 
     train(train_data, val_data, source_vocab, target_vocab, source_serialize, target_serialize)
