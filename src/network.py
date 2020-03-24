@@ -636,15 +636,20 @@ class TreeEncoder(nn.Module):
     for encoder_manager_idx, encoder_manager in enumerate(encoder_managers):
       root = encoder_manager.get_tree(0)
       h, c = root.state
-      encoder_h_state.append(h)
-      encoder_c_state.append(c)
+      if not self.bidirectional:
+        encoder_h_state.append(h)
+        encoder_c_state.append(c)
+      else:
+        h_td, c_td = root.state_td
+        encoder_h_state.append(torch.cat([h, h_td.squeeze()], dim=0))
+        encoder_c_state.append(torch.cat([c, c_td.squeeze()], dim=0))
       init_encoder_output = []
       init_encoder_output_oov_ids = [] if encoder_managers_oov_ids is not None else None
       for idx, tree in enumerate(encoder_manager.trees):
         if not self.bidirectional:
           init_encoder_output.append(tree.state[0])
         else:
-          init_encoder_output.append(torch.cat([tree.state[0], tree.state_td[0]], dim=1))
+          init_encoder_output.append(torch.cat([tree.state[0], tree.state_td[0].squeeze()], dim=0))
         if init_encoder_output_oov_ids is not None:
           if self.cuda_flag:
             init_encoder_output_oov_ids.append(encoder_managers_oov_ids[encoder_manager_idx].trees[idx].root.cuda())
