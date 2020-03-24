@@ -865,7 +865,7 @@ class Tree2TreeModel(nn.Module):
     if self.dropout_rate > 0:
       self.dropout = nn.Dropout(p=self.dropout_rate)
 
-    self.encoder = TreeEncoder(self.source_vocab_size, self.embedding_size, self.hidden_size, self.batch_size, self.bidirctional)
+    self.encoder = TreeEncoder(self.source_vocab_size, self.embedding_size, self.hidden_size, self.batch_size, self.bidirectional)
 
     self.decoder_embedding = nn.Embedding(self.target_vocab_size, self.embedding_size)
 
