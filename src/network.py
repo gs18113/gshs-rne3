@@ -610,8 +610,8 @@ class TreeEncoder(nn.Module):
           states_c = states_l[1]
           tree_idxes = tree_idxes_l
         else:
-          states_h = torch.cat([states_l[0], states_r[0]], dim=0)
-          states_c = torch.cat([states_l[1], states_r[1]], dim=0)
+          states_h = torch.cat([states_l[0], states_r[0]], dim=1)
+          states_c = torch.cat([states_l[1], states_r[1]], dim=1)
           tree_idxes = tree_idxes_l + tree_idxes_r
 
         for i in range(len(tree_idxes)):
