@@ -543,8 +543,8 @@ class TreeEncoder(nn.Module):
     if self.bidirectional:
       queue = []
       head = 0
-      for idx in range(len(encoder_managers)):
-        queue.append((idx, -1))
+      for encoder_manager_idx in range(len(encoder_managers)):
+        queue.append((encoder_manager_idx, -1))
       while head < len(queue):
         states_h_l = [] # state_h used as input to encoder_td_l
         states_c_l = [] # state_c used as input to encoder_td_l
@@ -557,13 +557,13 @@ class TreeEncoder(nn.Module):
         while head < len(queue):
           encoder_manager_idx, idx = queue[head]
           if idx == -1: # When it's the first iteration
-            state_h = torch.zeros([1, self.hidden_size])
-            state_c = torch.zeros([1, self.hidden_size])
+            state_h = torch.zeros([1, self.hidden_size]).cuda()
+            state_c = torch.zeros([1, self.hidden_size]).cuda()
             lstm_input = encoder_managers[encoder_manager_idx].trees[0].root
             states_h_l.append(state_h)
             states_c_l.append(state_c)
             lstm_inputs_l.append(lstm_input)
-            tree_idxes_l.append(0)
+            tree_idxes_l.append((encoder_manager_idx, 0))
           else:
             current_tree = encoder_managers[encoder_manager_idx].trees[idx]
             if current_tree.lchild is not None:
@@ -572,14 +572,14 @@ class TreeEncoder(nn.Module):
               states_h_l.append(state_h)
               states_c_l.append(state_c)
               lstm_inputs_l.append(lstm_input)
-              tree_idxes_l.append(current_tree.lchild)
+              tree_idxes_l.append((encoder_manager_idx, current_tree.lchild))
             if current_tree.rchild is not None:
               state_h, state_c = current_tree.state_td
               lstm_input = encoder_managers[encoder_manager_idx].trees[current_tree.rchild].root
               states_h_r.append(state_h)
               states_c_r.append(state_c)
               lstm_inputs_r.append(lstm_input)
-              tree_idxes_r.append(current_tree.rchild)
+              tree_idxes_r.append((encoder_manager_idx, current_tree.rchild))
             
           head += 1
         
@@ -591,8 +591,6 @@ class TreeEncoder(nn.Module):
           states_c_l = torch.stack(states_c_l, dim=1)
           lstm_inputs_l = torch.stack(lstm_inputs_l, dim=0)
           if self.cuda_flag:
-            states_h_l = states_h_l.cuda()
-            states_c_l = states_c_l.cuda()
             lstm_inputs_l = lstm_inputs_l.cuda()
           states_l = self.encode_td_l(lstm_inputs_l, (states_h_l, states_c_l))
         if len(tree_idxes_r) > 0:
@@ -600,8 +598,6 @@ class TreeEncoder(nn.Module):
           states_c_r = torch.stack(states_c_r, dim=1)
           lstm_inputs_r = torch.stack(lstm_inputs_r, dim=0)
           if self.cuda_flag:
-            states_h_r = states_h_r.cuda()
-            states_c_r = states_c_r.cuda()
             lstm_inputs_r = lstm_inputs_r.cuda()
           states_r = self.encode_td_r(lstm_inputs_r, (states_h_r, states_c_r))
 
@@ -614,20 +610,19 @@ class TreeEncoder(nn.Module):
           states_c = states_l[1]
           tree_idxes = tree_idxes_l
         else:
-          print("####DEBUGGING###")
-          print("Shape of states_output_l[0]:")
-          print(states_l[0].shape)
-          print("####DEBUGGING###")
           states_h = torch.cat([states_l[0], states_r[0]], dim=0)
           states_c = torch.cat([states_l[1], states_r[1]], dim=0)
           tree_idxes = tree_idxes_l + tree_idxes_r
 
         for i in range(len(tree_idxes)):
           encoder_manager_idx, idx = tree_idxes[i]
-          encoder_managers[encoder_manager_idx].state_td = (states_h)
+          encoder_managers[encoder_manager_idx].state_td = (states_h[:, i, :], states_c[:, i, :])
+          queue.append((encoder_manager_idx, idx))
 
-
-    PAD_state_token = Variable(torch.zeros(self.hidden_size))
+    if not self.bidirectional:
+      PAD_state_token = torch.zeros(self.hidden_size)
+    else:
+      PAD_state_token = torch.zeros(self.hidden_size * 2)
     PAD_ID_tensor = torch.LongTensor([data_utils.PAD_ID])
     if self.cuda_flag:
       PAD_state_token = PAD_state_token.cuda()
@@ -646,7 +641,10 @@ class TreeEncoder(nn.Module):
       init_encoder_output = []
       init_encoder_output_oov_ids = [] if encoder_managers_oov_ids is not None else None
       for idx, tree in enumerate(encoder_manager.trees):
-        init_encoder_output.append(tree.state[0])
+        if not self.bidirectional:
+          init_encoder_output.append(tree.state[0])
+        else:
+          init_encoder_output.append(torch.cat([tree.state[0], tree.state_td[0]], dim=1))
         if init_encoder_output_oov_ids is not None:
           if self.cuda_flag:
             init_encoder_output_oov_ids.append(encoder_managers_oov_ids[encoder_manager_idx].trees[idx].root.cuda())
@@ -881,7 +879,10 @@ class Tree2TreeModel(nn.Module):
       self.decoder_l = nn.LSTM(input_size=self.embedding_size + self.hidden_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True, dropout=self.dropout_rate)
       self.decoder_r = nn.LSTM(input_size=self.embedding_size + self.hidden_size, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True, dropout=self.dropout_rate)
 
-    # self.bmm_linear = nn.Linear(self.hidden_size, self.hidden_size)
+    if not self.bidirectional:
+      self.bmm_linear = nn.Linear(self.hidden_size, self.hidden_size)
+    else:
+      self.bmm_linear = nn.Linear(self.hidden_size, 2*self.hidden_size)
     self.attention_linear = nn.Linear(self.hidden_size * 2, self.hidden_size, bias=True)
     self.attention_tanh = nn.Tanh()
 
@@ -908,8 +909,8 @@ class Tree2TreeModel(nn.Module):
     self.optimizer.step()
 
   def attention(self, encoder_outputs, attention_masks, decoder_output):
-    # dotted = torch.bmm(encoder_outputs, self.bmm_linear(decoder_output).unsqueeze(2)) # batch_size*source_length*hidden_size, batch_size*hidden_size
-    dotted = torch.bmm(encoder_outputs, decoder_output.unsqueeze(2)) # batch_size*source_length*hidden_size, batch_size*hidden_size
+    dotted = torch.bmm(encoder_outputs, self.bmm_linear(decoder_output).unsqueeze(2)) # batch_size*source_length*hidden_size, batch_size*hidden_size
+    #dotted = torch.bmm(encoder_outputs, decoder_output.unsqueeze(2)) # batch_size*source_length*hidden_size, batch_size*hidden_size
     dotted = dotted.squeeze()
     if len(dotted.size()) == 1:
       dotted = dotted.unsqueeze(0)
