@@ -999,7 +999,8 @@ class Tree2TreeModel(nn.Module):
 
     for idx in range(len(decoder_managers)):
       current_prediction_idx = prediction_managers[idx].create_binary_tree(data_utils.GO_ID, None, 0)
-      prediction_managers[idx].trees[current_prediction_idx].state = encoder_h_state[idx].unsqueeze(0), encoder_c_state[idx].unsqueeze(0)
+      # prediction_managers[idx].trees[current_prediction_idx].state = encoder_h_state[idx].unsqueeze(0), encoder_c_state[idx].unsqueeze(0)
+      prediction_managers[idx].trees[current_prediction_idx].state = torch.zeros([1, self.hidden_size]), torch.zeros([1, self.hidden_size])
       prediction_managers[idx].trees[current_prediction_idx].target = 0
       queue.append((idx, current_prediction_idx))
 
