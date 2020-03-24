@@ -561,8 +561,8 @@ class TreeEncoder(nn.Module):
         while head < len(queue):
           encoder_manager_idx, idx = queue[head]
           if idx == -1: # When it's the first iteration
-            state_h = torch.zeros(self.hidden_size)
-            state_c = torch.zeros(self.hidden_size)
+            state_h = torch.zeros([1, self.hidden_size])
+            state_c = torch.zeros([1, self.hidden_size])
             lstm_input = encoder_managers[encoder_manager_idx].trees[0].root
             states_h_l.append(state_h)
             states_c_l.append(state_c)
@@ -591,8 +591,8 @@ class TreeEncoder(nn.Module):
           break
 
         if len(tree_idxes_l) > 0:
-          states_h_l = torch.stack(states_h_l, dim=0)
-          states_c_l = torch.stack(states_c_l, dim=0)
+          states_h_l = torch.stack(states_h_l, dim=1)
+          states_c_l = torch.stack(states_c_l, dim=1)
           lstm_inputs_l = torch.stack(lstm_inputs_l, dim=0)
           if self.cuda_flag:
             states_h_l = states_h_l.cuda()
@@ -600,8 +600,8 @@ class TreeEncoder(nn.Module):
             lstm_inputs_l = lstm_inputs_l.cuda()
           states_output_l = self.encode_td_l(lstm_inputs_l, (states_h_l, states_c_l))
         if len(tree_idxes_r) > 0:
-          states_h_r = torch.stack(states_h_r, dim=0)
-          states_c_r = torch.stack(states_c_r, dim=0)
+          states_h_r = torch.stack(states_h_r, dim=1)
+          states_c_r = torch.stack(states_c_r, dim=1)
           lstm_inputs_r = torch.stack(lstm_inputs_r, dim=0)
           if self.cuda_flag:
             states_h_r = states_h_r.cuda()
