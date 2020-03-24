@@ -95,7 +95,8 @@ def create_model(source_vocab_size, target_vocab_size, dropout_rate, max_source_
       args.learning_rate,
       dropout_rate,
       args.no_pf,
-      args.no_attention)
+      args.no_attention,
+      args.bidirectional)
    
   if cuda.is_available():
     model.cuda()
@@ -462,6 +463,9 @@ parser.add_argument('--num_examples', type=int, default=1,
 
 parser.add_argument('--exp_name', type=str, required=True,
                     help='Experiment name')
+
+parser.add_argument('--bidirectional', type=str2bool, default=True,
+                    help='set to true enable pointer generation')
 
 args = parser.parse_args()
 

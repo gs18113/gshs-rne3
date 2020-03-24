@@ -18,6 +18,8 @@ class BinaryTree(object):
         self.target = None
         self.prediction = None
         self.attention = None
+        # for bidirectional encoder
+        self.state_td = None
 
 class Tree(object):
     def __init__(self, root, parent, depth):
