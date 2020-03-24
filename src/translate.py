@@ -465,7 +465,7 @@ parser.add_argument('--exp_name', type=str, required=True,
 
 args = parser.parse_args()
 
-writer = SummaryWriter(os.join(args.logdir, args.exp_name))
+writer = SummaryWriter(os.path.join(args.logdir, args.exp_name))
 
 def main():
   if args.network == 'seq2seq' or args.network == 'seq2tree':
@@ -487,10 +487,10 @@ def main():
     val_data = trees_strip(json.load(open(args.val_data, 'r')))
 
     # While debugging
-    # train_data = train_data[:2]
-    # val_data = train_data[:2]
-    # args.batch_size = 2
-    # args.steps_per_checkpoint = 10
+    train_data = train_data[:1]
+    val_data = train_data[:1]
+    args.batch_size = 1
+    args.steps_per_checkpoint = 10
 
     train(train_data, val_data, source_vocab, target_vocab, source_serialize, target_serialize)
 
