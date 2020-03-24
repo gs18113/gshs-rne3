@@ -594,11 +594,19 @@ class TreeEncoder(nn.Module):
           states_h_l = torch.stack(states_h_l, dim=0)
           states_c_l = torch.stack(states_c_l, dim=0)
           lstm_inputs_l = torch.stack(lstm_inputs_l, dim=0)
+          if self.cuda_flag:
+            states_h_l = states_h_l.cuda()
+            states_c_l = states_c_l.cuda()
+            lstm_inputs_l = lstm_inputs_l.cuda()
           states_output_l = self.encode_td_l(lstm_inputs_l, (states_h_l, states_c_l))
         if len(tree_idxes_r) > 0:
           states_h_r = torch.stack(states_h_r, dim=0)
           states_c_r = torch.stack(states_c_r, dim=0)
           lstm_inputs_r = torch.stack(lstm_inputs_r, dim=0)
+          if self.cuda_flag:
+            states_h_r = states_h_r.cuda()
+            states_c_r = states_c_r.cuda()
+            lstm_inputs_r = lstm_inputs_r.cuda()
           states_output_r = self.encode_td_r(lstm_inputs_r, (states_h_r, states_c_r))
 
         if len(tree_idxes_l) == 0:
