@@ -557,8 +557,11 @@ class TreeEncoder(nn.Module):
         while head < len(queue):
           encoder_manager_idx, idx = queue[head]
           if idx == -1: # When it's the first iteration
-            state_h = torch.zeros([1, self.hidden_size]).cuda()
-            state_c = torch.zeros([1, self.hidden_size]).cuda()
+            state_h = torch.zeros([1, self.hidden_size])
+            state_c = torch.zeros([1, self.hidden_size])
+            if self.cuda_flag:
+              state_h = state_h.cuda()
+              state_c = state_c.cuda()
             lstm_input = encoder_managers[encoder_manager_idx].trees[0].root
             states_h_l.append(state_h)
             states_c_l.append(state_c)
@@ -1001,6 +1004,9 @@ class Tree2TreeModel(nn.Module):
       current_prediction_idx = prediction_managers[idx].create_binary_tree(data_utils.GO_ID, None, 0)
       # prediction_managers[idx].trees[current_prediction_idx].state = encoder_h_state[idx].unsqueeze(0), encoder_c_state[idx].unsqueeze(0)
       prediction_managers[idx].trees[current_prediction_idx].state = torch.zeros([1, self.hidden_size]), torch.zeros([1, self.hidden_size])
+      if self.cuda_flag:
+        prediction_managers[idx].trees[current_prediction_idx].state[0] = prediction_managers[idx].trees[current_prediction_idx].state[0].cuda()
+        prediction_managers[idx].trees[current_prediction_idx].state[1] = prediction_managers[idx].trees[current_prediction_idx].state[1].cuda()
       prediction_managers[idx].trees[current_prediction_idx].target = 0
       queue.append((idx, current_prediction_idx))
 
