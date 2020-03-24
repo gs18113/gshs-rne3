@@ -398,22 +398,18 @@ class TreeEncoder(nn.Module):
     return encoder_outputs
 
   def encode_td_l(self, encoder_inputs, states):
-    # states = repackage_state(states)
-    embedding = self.encoder_embedding(encoder_inputs).squeeze()
-    if len(embedding.size()) == 1:
-      embedding = embedding.unsqueeze(0)
-    encoder_outputs = self.encoder_td_l(embedding, states)
+    states = repackage_state(states)
+    embedding = self.encoder_embedding(encoder_inputs)
+    _, encoder_states = self.encoder_td_l(embedding, states)
 
-    return encoder_outputs
+    return encoder_states
 
   def encode_td_r(self, encoder_inputs, states):
-    # states = repackage_state(states)
-    embedding = self.encoder_embedding(encoder_inputs).squeeze()
-    if len(embedding.size()) == 1:
-      embedding = embedding.unsqueeze(0)
-    encoder_outputs = self.encoder_td_r(embedding, states)
+    states = repackage_state(states)
+    embedding = self.encoder_embedding(encoder_inputs)
+    _, encoder_states = self.encoder_td_r(embedding, states)
 
-    return encoder_outputs
+    return encoder_states
 
   def forward(self, encoder_managers, encoder_managers_oov_ids):
     queue = []
@@ -598,7 +594,7 @@ class TreeEncoder(nn.Module):
             states_h_l = states_h_l.cuda()
             states_c_l = states_c_l.cuda()
             lstm_inputs_l = lstm_inputs_l.cuda()
-          states_output_l = self.encode_td_l(lstm_inputs_l, (states_h_l, states_c_l))
+          states_l = self.encode_td_l(lstm_inputs_l, (states_h_l, states_c_l))
         if len(tree_idxes_r) > 0:
           states_h_r = torch.stack(states_h_r, dim=1)
           states_c_r = torch.stack(states_c_r, dim=1)
@@ -607,28 +603,28 @@ class TreeEncoder(nn.Module):
             states_h_r = states_h_r.cuda()
             states_c_r = states_c_r.cuda()
             lstm_inputs_r = lstm_inputs_r.cuda()
-          states_output_r = self.encode_td_r(lstm_inputs_r, (states_h_r, states_c_r))
+          states_r = self.encode_td_r(lstm_inputs_r, (states_h_r, states_c_r))
 
         if len(tree_idxes_l) == 0:
-          states_output_h = states_output_r[0]
-          states_output_c = states_output_r[1]
+          states_h = states_r[0]
+          states_c = states_r[1]
           tree_idxes = tree_idxes_r
         elif len(tree_idxes_r) == 0:
-          states_output_h = states_output_l[0]
-          states_output_c = states_output_l[1]
+          states_h = states_l[0]
+          states_c = states_l[1]
           tree_idxes = tree_idxes_l
         else:
           print("####DEBUGGING###")
           print("Shape of states_output_l[0]:")
-          print(states_output_l[0].shape)
+          print(states_l[0].shape)
           print("####DEBUGGING###")
-          states_output_h = torch.cat([states_output_l[0], states_output_r[0]], dim=0)
-          states_output_c = torch.cat([states_output_l[1], states_output_r[1]], dim=0)
+          states_h = torch.cat([states_l[0], states_r[0]], dim=0)
+          states_c = torch.cat([states_l[1], states_r[1]], dim=0)
           tree_idxes = tree_idxes_l + tree_idxes_r
 
         for i in range(len(tree_idxes)):
           encoder_manager_idx, idx = tree_idxes[i]
-          encoder_managers[encoder_manager_idx].state_td = (states_output_h)
+          encoder_managers[encoder_manager_idx].state_td = (states_h)
 
 
     PAD_state_token = Variable(torch.zeros(self.hidden_size))
