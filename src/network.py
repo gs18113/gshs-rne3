@@ -546,6 +546,7 @@ class TreeEncoder(nn.Module):
 
     if self.bidirectional:
       queue = []
+      head = 0
       for idx in range(len(encoder_managers)):
         queue.append((idx, -1))
       while head < len(queue):
