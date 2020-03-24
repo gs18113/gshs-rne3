@@ -616,7 +616,7 @@ class TreeEncoder(nn.Module):
 
         for i in range(len(tree_idxes)):
           encoder_manager_idx, idx = tree_idxes[i]
-          encoder_managers[encoder_manager_idx].state_td = (states_h[:, i, :], states_c[:, i, :])
+          encoder_managers[encoder_manager_idx].trees[idx].state_td = (states_h[:, i, :], states_c[:, i, :])
           queue.append((encoder_manager_idx, idx))
 
     if not self.bidirectional:
