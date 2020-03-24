@@ -889,9 +889,10 @@ class Tree2TreeModel(nn.Module):
 
     if not self.bidirectional:
       self.bmm_linear = nn.Linear(self.hidden_size, self.hidden_size)
+      self.attention_linear = nn.Linear(self.hidden_size * 2, self.hidden_size, bias=True)
     else:
       self.bmm_linear = nn.Linear(self.hidden_size, 2*self.hidden_size)
-    self.attention_linear = nn.Linear(self.hidden_size * 2, self.hidden_size, bias=True)
+      self.attention_linear = nn.Linear(self.hidden_size * 3, self.hidden_size, bias=True)
     self.attention_tanh = nn.Tanh()
 
     self.output_linear_layer = nn.Linear(self.hidden_size, self.target_vocab_size, bias=True)
