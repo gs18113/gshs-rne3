@@ -32,6 +32,8 @@ from tqdm import tqdm
 
 from Tree import tree2str, trees_strip
 
+import gc
+
 import resource
 rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
 resource.setrlimit(resource.RLIMIT_NOFILE, (500000, rlimit[1]))
@@ -308,6 +310,14 @@ def evaluate(model, test_set, source_vocab, target_vocab):
     logging.info("  eval: accuracy of programs %.2f" % (acc_programs * 1.0 / tot_programs))
     
     logging.info("acc_tokens: " + str(acc_tokens) + ", tot_tokens: " + str(tot_tokens) + ", acc_programs: " + str(acc_programs) + ", tot_programs: " + str(tot_programs))
+
+def gcdebug():
+  for obj in gc.get_objects():
+    try:
+      if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+        print(type(obj), obj.size())
+    except:
+      pass
 
 def train(train_data, val_data, source_vocab, target_vocab, source_serialize, target_serialize):
 
