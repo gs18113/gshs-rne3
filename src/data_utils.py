@@ -153,7 +153,6 @@ def ast_to_token_ids_oovs(code, vocab, serialize):
       current['children'].append(ast_to_token_ids_oovs(sub_tree, vocab, serialize))
     return current
 
-
 def serialize_tree(tree):
   current = []
   current.append(LEFT_BRACKET_ID)
@@ -249,7 +248,7 @@ def build_trees(init_dataset, n_cpus, target_serialize=False):
     source_trees.build_binary_tree_from_dict(source)
     if source_oov_ids is not None:
       source_trees_oov_ids = TreeManager()
-      source_trees_oov_ids.build_binary_tree_from_dict(source_oov_ids)
+      source_trees_oov_ids.build_binary_tree_from_dict_oovs(source_oov_ids)
     else:
       source_trees_oov_ids = None
 
