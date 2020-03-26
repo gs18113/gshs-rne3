@@ -134,6 +134,26 @@ def ast_to_token_ids(code, vocab, serialize):
       current['children'].append(ast_to_token_ids(sub_tree, vocab, serialize))
     return current
 
+def ast_to_token_ids_oovs(code, vocab, serialize):
+  if serialize:
+    current = []
+    current.append(vocab.get(str(code['root']), UNK_ID))
+    if len(code['children']) > 0:
+      current.append(UNK_ID)
+      for sub_tree in code['children']:
+        child, child_extended = ast_to_token_ids_oovs(sub_tree, vocab, serialize)
+        current = current + child
+      current.append(UNK_ID)
+    return current
+  else:
+    current = {}
+    current['root'] = vocab.get(str(code['root']), UNK_ID)
+    current['children'] = []
+    for sub_tree in code['children']:
+      current['children'].append(ast_to_token_ids_oovs(sub_tree, vocab, serialize))
+    return current
+
+
 def serialize_tree(tree):
   current = []
   current.append(LEFT_BRACKET_ID)
@@ -146,7 +166,10 @@ def serialize_tree(tree):
   return current
 
 def raw_program_to_token_ids(prog, vocab):
-  return [vocab[str(t)] for t in prog] + [EOS_ID]
+  return [vocab.get(str(t), UNK_ID) for t in prog] + [EOS_ID]
+
+def raw_program_to_token_ids_oovs(prog, vocab):
+  return [vocab.get(str(t), UNK_ID) for t in prog] + [UNK_ID]
 
 def build_vocab_oovs(code, source_vocab, current_target_vocab, format, vocab_oovs = None):
   if vocab_oovs == None:
@@ -199,10 +222,10 @@ def prepare_data(init_data, source_vocab, target_vocab, input_format, output_for
 
     if input_format == 'seq':
       source_prog_original = raw_program_to_token_ids(source_prog, source_vocab)
-      target_prog_oov_ids = raw_program_to_token_ids(source_prog, vocab_oovs) if pointer_gen else None
+      target_prog_oov_ids = raw_program_to_token_ids_oovs(source_prog, vocab_oovs) if pointer_gen else None
     else:
       source_prog_original = ast_to_token_ids(source_prog, source_vocab, source_serialize)
-      source_prog_oov_ids = ast_to_token_ids(source_prog, vocab_oovs, source_serialize) if pointer_gen else None
+      source_prog_oov_ids = ast_to_token_ids_oovs(source_prog, vocab_oovs, source_serialize) if pointer_gen else None
     if output_format == 'seq':
       target_prog_original = raw_program_to_token_ids(target_prog, target_vocab)
       target_prog_extended = raw_program_to_token_ids(target_prog, target_vocab_extended) if pointer_gen else None
