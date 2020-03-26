@@ -70,6 +70,24 @@ class TreeManager(object):
         current_child_id = self.create_binary_tree(data_utils.EOS_ID, pre_child_id, self.trees[pre_child_id].depth + 1)
         self.trees[pre_child_id].rchild = current_child_id
         return current_id
+    
+    def build_binary_tree_from_dict_oovs(self, init_tree, parent=None, depth=0):
+        current_id = self.create_binary_tree(init_tree['root'], parent, depth)
+        num_children = len(init_tree['children'])
+        if num_children == 0:
+            lchild_id = self.create_binary_tree(data_utils.UNK_ID, current_id, depth + 1)
+            self.trees[current_id].lchild = lchild_id
+            return current_id
+        first_child_id = self.build_binary_tree_from_dict(init_tree['children'][0], current_id, depth + 1)
+        self.trees[current_id].lchild = first_child_id
+        pre_child_id = first_child_id
+        for i in range(1, len(init_tree['children'])):
+            current_child_id = self.build_binary_tree_from_dict(init_tree['children'][i], pre_child_id, self.trees[pre_child_id].depth + 1)
+            self.trees[pre_child_id].rchild = current_child_id
+            pre_child_id = current_child_id
+        current_child_id = self.create_binary_tree(data_utils.UNK_ID, pre_child_id, self.trees[pre_child_id].depth + 1)
+        self.trees[pre_child_id].rchild = current_child_id
+        return current_id
 
     def build_tree_from_dict(self, init_tree, target_len, parent=None, depth=0):
         root = []
