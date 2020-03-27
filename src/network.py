@@ -658,6 +658,7 @@ class TreeEncoder(nn.Module):
             init_encoder_output_oov_ids.append(encoder_managers_oov_ids[encoder_manager_idx].trees[idx].root.cuda())
           else:
             init_encoder_output_oov_ids.append(encoder_managers_oov_ids[encoder_manager_idx].trees[idx].root)
+        tree.state = tree.state_td = None
 
       attention_mask = [0] * len(init_encoder_output)
       current_len = len(init_encoder_output)
