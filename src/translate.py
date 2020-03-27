@@ -389,7 +389,7 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
               + 'target:\n' + ''.join(tree2str(val_data[i-1]['target_ast'])) + '\n\n' \
               + 'prediction:\n' + ''.join([target_vocab_extended_rev[id] for id in decoder_outputs[i-1]])
             writer.add_text('Example/validation_' + str(idx), text, global_step = current_step)
-        sys.stdout.flush()
+        torch.cuda.empty_cache()
 
 def test(test_data, source_vocab, target_vocab, source_serialize, target_serialize):
   model = create_model(len(source_vocab), len(target_vocab), 0.0, args.max_source_len, args.max_target_len)
