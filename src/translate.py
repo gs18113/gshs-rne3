@@ -357,6 +357,8 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
 
       writer.add_scalar('Loss/train', step_loss, global_step = current_step)
 
+      writer.add_scalar('Memory usage', torch.cuda.memory_allocated(), global_step = current_step)
+
       if current_step % args.learning_rate_decay_steps == 0 and model.learning_rate > 0.0001:
         model.decay_learning_rate(args.learning_rate_decay_factor)
 
