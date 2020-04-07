@@ -227,7 +227,7 @@ def step_tree2tree(model, encoder_inputs, init_decoder_inputs, encoder_inputs_oo
     output_predictions = []
 
     for prediction_manager in prediction_managers:
-      print(prediction_manager.trees[0]['root']);
+      print(prediction_manager.trees[0].root);
       output_predictions.append(model.tree2seq(prediction_manager, 1))
 
   if feed_previous == False: # == training
