@@ -290,7 +290,6 @@ def evaluate(model, test_set, source_vocab, target_vocab):
         if args.network == 'tree2tree':
           current_source = data_utils.serialize_binary_tree(current_source, 0)
 
-        print(current_target)
         res.append((current_source, current_target, current_output))
 
         tot_tokens += len(current_target)
