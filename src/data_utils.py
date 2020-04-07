@@ -164,6 +164,19 @@ def serialize_tree(tree):
   current.append(RIGHT_BRACKET_ID)
   return current
 
+def serialize_binary_tree(tree, current_idx):
+    current_tree = tree.get_tree(current_idx)
+    if current_tree.root == data_utils.EOS_ID:
+      return []
+    ret = [LEFT_BRACKET_ID]
+    ret.append(current_tree.prediction)
+    if current_tree.lchild is not None:
+      ret = ret + serialize_binary_tree(tree, current_tree.lchild)
+    ret.append(data_utils.RIGHT_BRACKET_ID)
+    if current_tree.rchild is not None:
+      ret = ret + serialize_binary_tree(tree, current_tree.rchild)
+    return ret
+
 def raw_program_to_token_ids(prog, vocab):
   return [vocab.get(str(t), UNK_ID) for t in prog] + [EOS_ID]
 

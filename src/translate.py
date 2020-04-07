@@ -286,9 +286,9 @@ def evaluate(model, test_set, source_vocab, target_vocab):
           current_target = current_target_extended
 
         if args.network != 'seq2seq' and args.network != 'tree2seq':
-          current_target = model.tree2seq(current_target_extended, 0)
+          current_target = data_utils.serialize_binary_tree(current_target, 0)
         if args.network == 'tree2tree':
-          current_source = model.tree2seq(current_source, 0)
+          current_source = data_utils.serialize_binary_tree(current_source, 0)
 
         print(current_target)
         res.append((current_source, current_target, current_output))
