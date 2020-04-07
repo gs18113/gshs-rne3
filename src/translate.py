@@ -286,9 +286,9 @@ def evaluate(model, test_set, source_vocab, target_vocab):
           current_target = current_target_extended
 
         if args.network != 'seq2seq' and args.network != 'tree2seq':
-          current_target = data_utils.serialize_tree(current_target)
+          current_target = model.tree2seq(current_target_extended)
         if args.network == 'tree2tree':
-          current_source = data_utils.serialize_tree(current_source)
+          current_source = model.tree2seq(current_source)
         res.append((current_source, current_target, current_output))
 
         tot_tokens += len(current_target)
