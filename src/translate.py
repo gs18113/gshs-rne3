@@ -266,7 +266,7 @@ def evaluate(model, test_set, source_vocab, target_vocab):
         eval_loss, raw_outputs = step_seq2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
       else:
         eval_loss, raw_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
-      outputs_num = sum(len(decoder_input.trees) for decoder_input in len(decoder_inputs))
+      outputs_num = sum(len(decoder_input.trees) for decoder_input in decoder_inputs)
       test_loss += outputs_num * eval_loss
       outputs_num_total += outputs_num
       for i in range(len(encoder_inputs)):
