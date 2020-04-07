@@ -169,7 +169,7 @@ def serialize_binary_tree(tree, current_idx):
     if current_tree.root == data_utils.EOS_ID:
       return []
     ret = [LEFT_BRACKET_ID]
-    ret.append(current_tree.prediction)
+    ret.append(current_tree.root)
     if current_tree.lchild is not None:
       ret = ret + serialize_binary_tree(tree, current_tree.lchild)
     ret.append(data_utils.RIGHT_BRACKET_ID)
