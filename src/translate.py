@@ -227,7 +227,6 @@ def step_tree2tree(model, encoder_inputs, init_decoder_inputs, encoder_inputs_oo
     output_predictions = []
 
     for prediction_manager in prediction_managers:
-      print(prediction_manager.trees[0].root);
       output_predictions.append(model.tree2seq(prediction_manager, 1))
 
   if feed_previous == False: # == training
@@ -287,9 +286,11 @@ def evaluate(model, test_set, source_vocab, target_vocab):
           current_target = current_target_extended
 
         if args.network != 'seq2seq' and args.network != 'tree2seq':
-          current_target = model.tree2seq(current_target_extended)
+          current_target = model.tree2seq(current_target_extended, 0)
         if args.network == 'tree2tree':
-          current_source = model.tree2seq(current_source)
+          current_source = model.tree2seq(current_source, 0)
+
+        print(current_target)
         res.append((current_source, current_target, current_output))
 
         tot_tokens += len(current_target)
