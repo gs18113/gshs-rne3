@@ -127,12 +127,12 @@ def tree2str(current_node):
     """
     used for JSON-based tree with string as their root
     """
-    ret = [current_node['root']]
+    ret = ['{ ']
+    ret.append(current_node['root'])
     if len(current_node['children']) != 0:
-        ret.append('{\n')
         for child in current_node['children']:
             ret += tree2str(child)
-        ret.append('}\n')
+    ret.append('} ')
     return ret
 
 def trees_strip(data):
