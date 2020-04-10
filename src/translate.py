@@ -223,11 +223,11 @@ def step_tree2tree(model, encoder_inputs, init_decoder_inputs, encoder_inputs_oo
 
   total_loss /= total_predictions
 
-  if feed_previous:# == evaluating
-    output_predictions = []
+  # if feed_previous:# == evaluating
+  #   output_predictions = []
 
-    for prediction_manager in prediction_managers:
-      output_predictions.append(model.tree2seq(prediction_manager, 1))
+  #   for prediction_manager in prediction_managers:
+  #     output_predictions.append(model.tree2seq(prediction_manager, 1))
 
   if feed_previous == False: # == training
     model.optimizer.zero_grad()
@@ -240,7 +240,7 @@ def step_tree2tree(model, encoder_inputs, init_decoder_inputs, encoder_inputs_oo
     encoder_inputs[idx].clear_states()
 
   if feed_previous:
-    return total_loss.item(), output_predictions
+    return total_loss.item(), prediction_managers
   else:
     return total_loss.item()
 
@@ -266,6 +266,8 @@ def evaluate(model, test_data, test_set, source_vocab, target_vocab):
         eval_loss, raw_outputs = step_seq2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
       else:
         eval_loss, raw_outputs = step_tree2tree(model, encoder_inputs, decoder_inputs, encoder_inputs_oov_ids, decoder_inputs_extended, extra_zeros_size, feed_previous=True)
+      formatted_output = [model.tree2seq_new(raw_output) for raw_output in raw_outputs]
+      raw_outputs = [model.tree2seq(raw_output) for raw_output in raw_outputs]
       outputs_num = sum(len(decoder_input.trees) for decoder_input in decoder_inputs)
       test_loss += outputs_num * eval_loss
       outputs_num_total += outputs_num
@@ -311,7 +313,7 @@ def evaluate(model, test_data, test_set, source_vocab, target_vocab):
           target_vocab_extended_rev = {**target_vocab_rev, **vocab_oovs_rev}
           text = 'source:\n' + ''.join(tree2str(test_data[idx + i]['source_ast'])) + '\n\n' \
             + 'target:\n' + ''.join(tree2str(test_data[idx + i]['target_ast'])) + '\n\n' \
-            + 'prediction:\n' + ''.join([target_vocab_extended_rev[id] for id in current_output])
+            + 'prediction:\n' + ''.join([target_vocab_extended_rev[id] for id in formatted_output[i]])
           writer.add_text('Example/test', text, global_step = idx + i)
 
     test_loss /= outputs_num_total
