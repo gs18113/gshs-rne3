@@ -291,15 +291,6 @@ def evaluate(model, test_data, test_set, source_vocab, target_vocab):
           current_source = data_utils.serialize_binary_tree(current_source, 0)
 
         res.append((current_source, current_target, current_output))
-        
-        if (idx + i) % args.steps_per_checkpoint == 0:
-          target_vocab_rev = {v: k for k, v in target_vocab.items()}
-          vocab_oovs_rev = {v+len(target_vocab)-1: k for k, v in test_set[idx + i][4].items()}
-          target_vocab_extended_rev = {**target_vocab_rev, **vocab_oovs_rev}
-          text = 'source:\n' + ''.join(tree2str(test_data[idx + i]['source_ast'])) + '\n\n' \
-            + 'target:\n' + ''.join(tree2str(test_data[idx + i]['target_ast'])) + '\n\n' \
-            + 'prediction:\n' + ''.join([target_vocab_extended_rev[id] for id in current_output])
-          writer.add_text('Example/test', text, global_step = idx + i)
 
         tot_tokens += len(current_target)
         all_correct = 1
@@ -313,6 +304,15 @@ def evaluate(model, test_data, test_set, source_vocab, target_vocab):
             all_correct = 0
             wrong_tokens += 1
         acc_programs += all_correct
+        
+        if (idx + i) % args.steps_per_checkpoint == 0:
+          target_vocab_rev = {v: k for k, v in target_vocab.items()}
+          vocab_oovs_rev = {v+len(target_vocab)-1: k for k, v in test_set[idx + i][4].items()}
+          target_vocab_extended_rev = {**target_vocab_rev, **vocab_oovs_rev}
+          text = 'source:\n' + ''.join(tree2str(test_data[idx + i]['source_ast'])) + '\n\n' \
+            + 'target:\n' + ''.join(tree2str(test_data[idx + i]['target_ast'])) + '\n\n' \
+            + 'prediction:\n' + ''.join([target_vocab_extended_rev[id] for id in current_output])
+          writer.add_text('Example/test', text, global_step = idx + i)
 
     test_loss /= outputs_num_total
     logging.info("  eval: loss %.4f" % test_loss)
