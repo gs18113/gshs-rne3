@@ -299,6 +299,7 @@ def evaluate(model, test_data, test_set, source_vocab, target_vocab):
           text = 'source:\n' + ''.join(tree2str(test_data[idx + i]['source_ast'])) + '\n\n' \
             + 'target:\n' + ''.join(tree2str(test_data[idx + i]['target_ast'])) + '\n\n' \
             + 'prediction:\n' + ''.join([target_vocab_extended_rev[id] for id in current_output])
+          writer.add_text('Example/test', text, global_step = idx + i)
 
         tot_tokens += len(current_target)
         all_correct = 1
