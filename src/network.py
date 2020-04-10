@@ -937,11 +937,12 @@ class Tree2TreeModel(nn.Module):
     current_tree = prediction_manager.get_tree(current_idx)
     if current_tree.prediction == data_utils.EOS_ID:
       return []
-    prediction = [data_utils.LEFT_BRACKET_ID]
+    prediction = []
     prediction.append(current_tree.prediction)
     if current_tree.lchild is not None:
+      prediction.append(data_utils.LEFT_BRACKET_ID)
       prediction = prediction + self.tree2seq(prediction_manager, current_tree.lchild)
-    prediction.append(data_utils.RIGHT_BRACKET_ID)
+      prediction.append(data_utils.RIGHT_BRACKET_ID)
     if current_tree.rchild is not None:
       prediction = prediction + self.tree2seq(prediction_manager, current_tree.rchild)
     return prediction

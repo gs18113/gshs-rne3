@@ -244,7 +244,7 @@ def step_tree2tree(model, encoder_inputs, init_decoder_inputs, encoder_inputs_oo
   else:
     return total_loss.item()
 
-def evaluate(model, test_set, source_vocab, target_vocab):
+def evaluate(model, test_data, test_set, source_vocab, target_vocab):
     
     test_loss = 0
     acc_tokens = 0
@@ -291,6 +291,14 @@ def evaluate(model, test_set, source_vocab, target_vocab):
           current_source = data_utils.serialize_binary_tree(current_source, 0)
 
         res.append((current_source, current_target, current_output))
+        
+        if (idx + i) % args.steps_per_checkpoint == 0:
+          target_vocab_rev = {v: k for k, v in target_vocab.items()}
+          vocab_oovs_rev = {v+len(target_vocab)-1: k for k, v in test_set[idx + i][4].items()}
+          target_vocab_extended_rev = {**target_vocab_rev, **vocab_oovs_rev}
+          text = 'source:\n' + ''.join(tree2str(test_data[idx + i]['source_ast'])) + '\n\n' \
+            + 'target:\n' + ''.join(tree2str(test_data[idx + i]['target_ast'])) + '\n\n' \
+            + 'prediction:\n' + ''.join([target_vocab_extended_rev[id] for id in current_output])
 
         tot_tokens += len(current_target)
         all_correct = 1
@@ -306,19 +314,11 @@ def evaluate(model, test_set, source_vocab, target_vocab):
         acc_programs += all_correct
 
     test_loss /= outputs_num_total
-    logging.info("  eval: loss %.2f" % test_loss)
-    logging.info("  eval: accuracy of tokens %.2f" % (acc_tokens * 1.0 / tot_tokens))
-    logging.info("  eval: accuracy of programs %.2f" % (acc_programs * 1.0 / tot_programs))
+    logging.info("  eval: loss %.4f" % test_loss)
+    logging.info("  eval: accuracy of tokens %.4f" % (acc_tokens * 1.0 / tot_tokens))
+    logging.info("  eval: accuracy of programs %.4f" % (acc_programs * 1.0 / tot_programs))
     
     logging.info("acc_tokens: " + str(acc_tokens) + ", tot_tokens: " + str(tot_tokens) + ", acc_programs: " + str(acc_programs) + ", tot_programs: " + str(tot_programs))
-
-def gcdebug():
-  for obj in gc.get_objects():
-    try:
-      if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-        print(type(obj), obj.size())
-    except:
-      pass
 
 def train(train_data, val_data, source_vocab, target_vocab, source_serialize, target_serialize):
 
@@ -358,8 +358,6 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
 
       writer.add_scalar('Loss/train', step_loss, global_step = current_step)
 
-      writer.add_scalar('Memory_usage', torch.cuda.memory_allocated(), global_step = current_step)
-
       if current_step % args.learning_rate_decay_steps == 0 and model.learning_rate > 0.0001:
         model.decay_learning_rate(args.learning_rate_decay_factor)
 
@@ -395,7 +393,7 @@ def train(train_data, val_data, source_vocab, target_vocab, source_serialize, ta
 def test(test_data, source_vocab, target_vocab, source_serialize, target_serialize):
   model = create_model(len(source_vocab), len(target_vocab), 0.0, args.max_source_len, args.max_target_len)
   test_set = data_utils.prepare_data(test_data, source_vocab, target_vocab, args.input_format, args.output_format, source_serialize, target_serialize, args.pointer_gen, args.n_cpus)  
-  evaluate(model, test_set, source_vocab, target_vocab)
+  evaluate(model, test_data, test_set, source_vocab, target_vocab)
 
 
 def str2bool(v):
